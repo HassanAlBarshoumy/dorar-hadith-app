@@ -1,0 +1,5 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_OTHER",
+  "summary":  "Create capacitor.config.json to enable native HTTP plugin for CORS bypass on Android.",
+  "updatedAt":  "2026-05-27T05:04:52.345628200Z"
+}

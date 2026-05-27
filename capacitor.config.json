@@ -1,0 +1,11 @@
+{
+  "appId": "com.dorar.hadith",
+  "appName": "الموسوعة الحديثية",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

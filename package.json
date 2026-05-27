@@ -1,0 +1,33 @@
+{
+  "name": "dorar-hadith-app",
+  "version": "1.0.0",
+  "description": "تطبيق متقدم للبحث في الموسوعة الحديثية (الدرر السنية)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64",
+    "build:android": "npx cap sync android && npx cap build android"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.dorar.hadith",
+    "productName": "الموسوعة الحديثية",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "directories": {
+      "output": "release"
+    }
+  }
+}

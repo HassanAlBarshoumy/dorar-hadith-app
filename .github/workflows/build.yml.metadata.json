@@ -1,0 +1,5 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_OTHER",
+  "summary":  "Create GitHub Actions workflow to build Windows (.exe) and Android (.apk).",
+  "updatedAt":  "2026-05-27T05:05:35.020276700Z"
+}

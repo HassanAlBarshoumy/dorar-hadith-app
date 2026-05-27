@@ -1,0 +1,25 @@
+{
+    "name": "الموسوعة الحديثية",
+    "short_name": "الموسوعة",
+    "description": "تطبيق للبحث في الموسوعة الحديثية التابعة لموقع الدرر السنية",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#f7f9fc",
+    "theme_color": "#1c4b44",
+    "dir": "rtl",
+    "lang": "ar",
+    "icons": [
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzFjNGI0NCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6Ii8+PHBhdGggZD0iTTEyIDIybDEwLTUtMTAtNS0xMCA1IDEwIDV6Ii8+PC9zdmc+",
+            "sizes": "192x192",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzFjNGI0NCI+PHBhdGggZD0iTTEyIDJMMiA3bDEwIDUgMTAtNS0xMC01ek0yIDE3bDEwIDUgMTAtNS0xMC01LTEwIDV6Ii8+PHBhdGggZD0iTTEyIDIybDEwLTUtMTAtNS0xMCA1IDEwIDV6Ii8+PC9zdmc+",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
