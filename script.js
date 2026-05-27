@@ -22,6 +22,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontsizeSelect = document.getElementById('fontsize-select');
     
     const filterBtns = document.querySelectorAll('.filter-btn');
+    
+    const liveAnnouncer = document.getElementById('live-announcer');
+    const btnBackToTop = document.getElementById('btn-back-to-top');
+
+    // --- Screen Reader Announcer ---
+    function announce(message) {
+        if (liveAnnouncer) {
+            liveAnnouncer.textContent = message;
+            // Clear after a bit so the same message can be announced again if needed
+            setTimeout(() => liveAnnouncer.textContent = '', 3000);
+        }
+    }
 
     // --- State ---
     let currentResults = []; // Store original fetched HTML strings
@@ -32,25 +44,50 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Init Settings ---
     const savedTheme = localStorage.getItem('dorar_theme') || 'auto';
     const savedFontSize = localStorage.getItem('dorar_fontsize') || 'md';
-    applyTheme(savedTheme);
-    applyFontSize(savedFontSize);
+    applyTheme(savedTheme, false);
+    applyFontSize(savedFontSize, false);
     themeSelect.value = savedTheme;
     fontsizeSelect.value = savedFontSize;
 
-    function applyTheme(theme) {
+    function applyTheme(theme, announceChange = true) {
         document.body.classList.remove('theme-auto', 'theme-light', 'theme-dark');
         document.body.classList.add(`theme-${theme}`);
         localStorage.setItem('dorar_theme', theme);
+        if (announceChange) {
+            const themeNames = { 'auto': 'تلقائي', 'light': 'فاتح', 'dark': 'داكن' };
+            announce(`تم تغيير المظهر إلى الوضع ال${themeNames[theme]}`);
+        }
     }
 
-    function applyFontSize(size) {
+    function applyFontSize(size, announceChange = true) {
         document.body.classList.remove('font-size-sm', 'font-size-md', 'font-size-lg', 'font-size-xl');
         document.body.classList.add(`font-size-${size}`);
         localStorage.setItem('dorar_fontsize', size);
+        if (announceChange) {
+            const sizeNames = { 'sm': 'صغير', 'md': 'متوسط', 'lg': 'كبير', 'xl': 'كبير جداً' };
+            announce(`تم تغيير حجم الخط إلى ${sizeNames[size]}`);
+        }
     }
 
     themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
     fontsizeSelect.addEventListener('change', (e) => applyFontSize(e.target.value));
+
+    // --- Back to Top Logic ---
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 300) {
+            btnBackToTop.classList.add('visible');
+            btnBackToTop.classList.remove('hidden');
+        } else {
+            btnBackToTop.classList.remove('visible');
+            btnBackToTop.classList.add('hidden');
+        }
+    });
+
+    btnBackToTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Return focus to search bar for accessibility
+        searchInput.focus();
+    });
 
     // --- Navigation & Modals ---
     btnHome.addEventListener('click', () => {
@@ -281,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (filtered.length === 0) {
             container.innerHTML = '<div class="empty-state" role="status">لا توجد نتائج مطابقة للتصفية الحالية.</div>';
+            announce("لا توجد نتائج مطابقة للتصفية الحالية.");
             return;
         }
 
@@ -393,19 +431,28 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsSection.setAttribute('aria-busy', 'false');
 
             if (dorarData && dorarData.ahadith && dorarData.ahadith.result) {
-                currentResults = processDorarHTML(dorarData.ahadith.result);
-                renderResults(currentResults, resultsContainer);
-                
-                setTimeout(() => {
-                    const firstCard = resultsContainer.querySelector('.hadith-card');
-                    if (firstCard) firstCard.focus();
-                }, 100);
+                const results = processDorarHTML(dorarData.ahadith.result);
+                if (results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="empty-state" role="status">لم يتم العثور على نتائج.</div>';
+                    announce("لم يتم العثور على نتائج للبحث المطلوب.");
+                } else {
+                    currentResults = results;
+                    renderResults(currentResults, resultsContainer);
+                    announce(`تم العثور على ${results.length} نتيجة. يمكنك استخدام مفتاح Tab للذهاب للنتائج، ثم الأسهم للتنقل بين الأحاديث.`);
+                    
+                    setTimeout(() => {
+                        const firstCard = resultsContainer.querySelector('.hadith-card');
+                        if (firstCard) firstCard.focus();
+                    }, 100);
+                }
             } else {
                 resultsContainer.innerHTML = '<div class="empty-state" role="status">لم يتم العثور على نتائج.</div>';
+                announce("لم يتم العثور على نتائج للبحث المطلوب.");
             }
         } catch (err) {
             loadingIndicator.classList.add('hidden');
             resultsContainer.innerHTML = `<div class="error-message" role="alert">عذراً، حدث خطأ أثناء جلب البيانات. تأكد من الاتصال بالإنترنت.</div>`;
+            announce("حدث خطأ أثناء البحث. يرجى التحقق من اتصالك بالإنترنت.");
         }
     });
 });
