@@ -596,7 +596,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
                             dorarData = JSON.parse(response.data);
                         } catch (e) {
-                            console.error("Capacitor HTTP failed", e);
+                            console.error("Capacitor HTTP direct failed, trying proxy...", e);
+                            try {
+                                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`)}`;
+                                const proxyResponse = await window.Capacitor.Plugins.CapacitorHttp.get({ url: proxyUrl });
+                                const proxyData = JSON.parse(proxyResponse.data);
+                                if (proxyData && proxyData.contents) {
+                                    dorarData = JSON.parse(proxyData.contents);
+                                }
+                            } catch (proxyError) {
+                                console.error("Capacitor HTTP Proxy failed", proxyError);
+                            }
                         }
                     }
                     
