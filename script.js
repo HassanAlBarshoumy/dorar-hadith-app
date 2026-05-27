@@ -965,7 +965,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const settings = appSettings.notif;
         if (!force && (!settings || !settings.enabled)) return;
 
-        // Use the current select values if forcing (testing), otherwise from settings
         const cat = force ? categorySelectNotif.value : (settings ? settings.category : 'عشوائي');
         let keyword = '';
         if (cat === 'عشوائي') {
@@ -974,75 +973,45 @@ document.addEventListener('DOMContentLoaded', () => {
             const words = categoryKeywords[randomCat];
             keyword = words[Math.floor(Math.random() * words.length)];
         } else {
-            const words = categoryKeywords[cat] || ['الله'];
+            const words = categoryKeywords[cat] || ['صلاة'];
             keyword = words[Math.floor(Math.random() * words.length)];
         }
 
         try {
-            let data = null;
-            // 1. Try Cache First
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.get_from_cache) {
-                try {
-                    const cachedData = await window.pywebview.api.get_from_cache(keyword);
-                    if (cachedData) data = JSON.parse(cachedData);
-                } catch (e) {}
+            let localDataStr = null;
+            if (window.electronAPI && window.electronAPI.searchLocalDb) {
+                localDataStr = await window.electronAPI.searchLocalDb(keyword, 1);
+            } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
+                localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
             }
 
-            // 2. Fallback to Internet
-            if (!data) {
-                if (window.electronAPI && window.electronAPI.fetchDorar) {
-                    try {
-                        const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`);
-                        if (rawResponse) data = JSON.parse(rawResponse);
-                    } catch (e) {}
-                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
-                    try {
-                        const rawResponse = await window.pywebview.api.search(keyword);
-                        if (rawResponse) data = JSON.parse(rawResponse);
-                    } catch (e) {}
-                }
-                
-                if (!data) {
-                    data = await fetchDorarJSONP(keyword);
-                }
-                
-                // 3. Save to Cache
-                if (data && window.pywebview && window.pywebview.api && window.pywebview.api.save_to_cache) {
-                    try {
-                        window.pywebview.api.save_to_cache(keyword, JSON.stringify(data));
-                    } catch (e) {}
-                }
-            }
+            if (localDataStr) {
+                const ahadith = JSON.parse(localDataStr);
+                if (ahadith && ahadith.length > 0) {
+                    const randomHadith = ahadith[Math.floor(Math.random() * ahadith.length)];
+                    const title = "إشعار الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'حديث عشوائي' : cat);
+                    const textContent = randomHadith.text_ar || randomHadith.text;
+                    const body = `${textContent}
 
-            if (data && data.ahadith && data.ahadith.result) {
-                const results = processDorarHTML(data.ahadith.result);
-                const authentic = results.filter(r => r.degree.includes('صحيح') || r.degree.includes('حسن') || r.degree.includes('إسناده'));
-                if (authentic.length > 0) {
-                    const randomHadith = authentic[Math.floor(Math.random() * authentic.length)];
-                    const title = "الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'فائدة عشوائية' : cat);
-                    const body = `${randomHadith.text}\n\nالراوي: ${randomHadith.rawi}\nالمحدث: ${randomHadith.muhaddith}\nخلاصة: ${randomHadith.degree}`;
+المصدر: ${randomHadith.book}
+الحكم: ${randomHadith.authenticity}`;
                     
-                    // Show in-app toast
                     showInAppNotification(title, body);
 
-                    // Show native notification
                     if (window.electronAPI && window.electronAPI.showNotification) {
                         window.electronAPI.showNotification({ title: title, body: body });
                     } else {
                         new Notification(title, { body: body });
                     }
                 } else if (force) {
-                    showInAppNotification("تجربة الإشعار", "لم يتم العثور على حديث صحيح لهذه الفئة في هذه المحاولة.");
+                    showInAppNotification("لم يتم العثور على نتائج", "لم نجد حديثاً مناسباً لهذا التصنيف في قاعدة البيانات.");
                 }
             } else if (force) {
-                showInAppNotification("خطأ", "لم نتمكن من جلب البيانات من الخادم.");
+                showInAppNotification("خطأ", "لم نتمكن من الوصول لقاعدة البيانات المحلية.");
             }
         } catch (err) {
-            if (window.electronAPI && window.electronAPI.logError) {
-                window.electronAPI.logError(`Notification error: ${err}`);
-            }
             if (force) {
-                showInAppNotification("خطأ", "حدث خطأ أثناء الاتصال بالإنترنت أو الخادم.");
+                showInAppNotification("خطأ", "حدث خطأ أثناء محاولة جلب الإشعار.");
             }
         }
     }
