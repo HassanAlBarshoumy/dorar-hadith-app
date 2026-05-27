@@ -249,14 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
         card.appendChild(header);
 
         // Process visual HTML (Badges)
-        const tempContainer = document.createElement('div');
-        let enhancedInfoHtml = infoHtml || '';
-        // Enhance infoHtml to wrap key-value pairs in .info-item badges if possible
-        // The API returns HTML like: <span class="info-subtitle">الراوي:</span> <span class="info-value">...</span>
-        // We will rely on CSS flex wrap for badges, which we added to style.css.
+        const contentId = `hadith-content-${Date.now()}-${index}`;
+        const contentWrapper = document.createElement('div');
+        contentWrapper.id = contentId;
         
-        tempContainer.innerHTML = hadithHtml + enhancedInfoHtml;
-        while(tempContainer.firstChild) card.appendChild(tempContainer.firstChild);
+        let enhancedInfoHtml = infoHtml || '';
+        contentWrapper.innerHTML = hadithHtml + enhancedInfoHtml;
+        card.appendChild(contentWrapper);
+        
+        card.setAttribute('aria-labelledby', contentId);
 
         return card;
     }
