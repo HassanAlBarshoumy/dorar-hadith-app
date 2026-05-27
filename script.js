@@ -534,18 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (searchSource === 'local_9books') {
-                if (window.electronAPI && window.electronAPI.searchLocalDb) {
-                    const localDataStr = await window.electronAPI.searchLocalDb(query);
-                    const localData = JSON.parse(localDataStr);
-                    currentResults = localData.map(item => ({
-                        hadithHtml: `<div class="hadith">${item.text}</div>`,
-                        infoHtml: `<div class="hadith-info">
-                            <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
-                            <span class="info-item"><span class="info-label">خلاصة الحكم:</span> ${item.authenticity}</span>
-                        </div>`,
-                        originalHtml: ""
-                    }));
-                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
                     const localDataStr = await window.pywebview.api.search_local_hadith(query);
                     const localData = JSON.parse(localDataStr);
                     
@@ -580,20 +569,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
                         return;
                     }
-                    // Try Electron API first
-                    if (window.electronAPI && window.electronAPI.fetchDorar) {
-                        try {
-                            const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`);
-                            if (rawResponse) {
-                                dorarData = JSON.parse(rawResponse);
-                            }
-                        } catch (e) {
-                            console.error("Electron API fetch failed", e);
-                        }
-                    }
-
-                    // Try Python API second
-                    if (!dorarData && window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                    // Try Python API first
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
                         try {
                             console.log("Trying Python api.search...");
                             const rawResponse = await window.pywebview.api.search(query);
@@ -820,12 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Fallback to Internet
             if (!data) {
-                if (window.electronAPI && window.electronAPI.fetchDorar) {
-                    try {
-                        const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`);
-                        if (rawResponse) data = JSON.parse(rawResponse);
-                    } catch (e) {}
-                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
                     try {
                         const rawResponse = await window.pywebview.api.search(keyword);
                         if (rawResponse) data = JSON.parse(rawResponse);
