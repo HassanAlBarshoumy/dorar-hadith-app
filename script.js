@@ -380,6 +380,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Rendering Cards ---
+
+    resultsContainer.addEventListener('keydown', (e) => {
+        const active = document.activeElement;
+        if (!active || !active.classList.contains('hadith-card')) return;
+        
+        if (e.key === 'Home') {
+            e.preventDefault();
+            const first = resultsContainer.firstElementChild;
+            if (first) first.focus();
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            const last = resultsContainer.lastElementChild;
+            if (last) last.focus();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = active.nextElementSibling;
+            if (next && next.classList.contains('hadith-card')) next.focus();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = active.previousElementSibling;
+            if (prev && prev.classList.contains('hadith-card')) prev.focus();
+        }
+    });
+
     function createCard(hadithHtml, infoHtml, originalHtml, index = 0) {
         const card = document.createElement('li');
         card.className = 'hadith-card';
@@ -459,7 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
         contentWrapper.id = contentId;
         
         let enhancedInfoHtml = infoHtml || '';
-        contentWrapper.innerHTML = hadithHtml + enhancedInfoHtml;
+        let srNumber = `<span class="sr-only">نتيجة رقم ${index + 1}: </span>`;
+        contentWrapper.innerHTML = srNumber + hadithHtml + enhancedInfoHtml;
         card.appendChild(contentWrapper);
         
         // Append action buttons at the bottom
@@ -604,6 +629,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
                 processedInfo = newInfoDiv.outerHTML;
+            }
+
+            let walker = document.createTreeWalker(hadithElements[i], NodeFilter.SHOW_TEXT, null, false);
+            let firstTextNode = walker.nextNode();
+            while(firstTextNode) {
+                if (firstTextNode.nodeValue.trim() !== '') {
+                    firstTextNode.nodeValue = firstTextNode.nodeValue.replace(/^\s*\d+\s*-\s*/, '');
+                    break;
+                }
+                firstTextNode = walker.nextNode();
             }
 
             items.push({
