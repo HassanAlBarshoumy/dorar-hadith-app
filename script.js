@@ -464,11 +464,14 @@ document.addEventListener('DOMContentLoaded', () => {
         card.style.animationDelay = `${index * 0.05}s`;
 
         // Text parsing for copy/share with beautiful formatting
-        const textHadith = document.createElement('div'); textHadith.innerHTML = hadithHtml;
-        const textInfo = document.createElement('div'); textInfo.innerHTML = (infoHtml || '');
+        const textHadith = document.createElement('div'); 
+        textHadith.innerHTML = hadithHtml.replace(/<br\s*[\/]?>/gi, '\n');
         
-        let plainText = textHadith.innerText.trim() + '\n\n';
-        let infoStr = textInfo.innerText.trim();
+        const textInfo = document.createElement('div'); 
+        textInfo.innerHTML = (infoHtml || '').replace(/<br\s*[\/]?>/gi, '\n');
+        
+        let plainText = textHadith.textContent.trim() + '\n\n';
+        let infoStr = textInfo.textContent.trim();
         // Insert new lines before keywords to make it readable
         infoStr = infoStr.replace(/([^\n])(الراوي:|المحدث:|المصدر:|الصفحة أو الرقم:|خلاصة حكم المحدث:|التخريج:)/g, '$1\n$2');
         plainText += infoStr;
