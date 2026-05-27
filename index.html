@@ -93,17 +93,17 @@
                 <!-- Results Section -->
                 <section id="results-section" class="results-section" aria-live="polite" aria-atomic="true" role="region" aria-labelledby="results-heading">
                     <h2 id="results-heading" class="sr-only">نتائج البحث</h2>
-                    <div id="results-container">
+                    <ul id="results-container" class="results-list">
                         <!-- Results will be injected here -->
-                    </div>
+                    </ul>
                 </section>
             </div>
 
             <div id="view-favorites" class="hidden">
                 <h2>الأحاديث المفضلة</h2>
-                <div id="favorites-container" class="results-section" aria-live="polite">
+                <ul id="favorites-container" class="results-section results-list" aria-live="polite">
                     <!-- Favorites will be injected here -->
-                </div>
+                </ul>
             </div>
 
         </main>
@@ -148,6 +148,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
     <!-- Script file -->
     <script src="./script.js"></script>

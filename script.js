@@ -137,16 +137,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // --- Toast Notification ---
+    function showToast(message) {
+        const toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        // Remove after animation (3 seconds)
+        setTimeout(() => {
+            if (toastContainer.contains(toast)) toastContainer.removeChild(toast);
+        }, 3000);
+    }
+
     // --- Rendering Cards ---
-    function createCard(hadithHtml, infoHtml, originalHtml) {
-        const card = document.createElement('article');
+    function createCard(hadithHtml, infoHtml, originalHtml, index = 0) {
+        const card = document.createElement('li');
         card.className = 'hadith-card';
         card.setAttribute('tabindex', '0');
+        
+        // Add staggered animation delay
+        card.style.animationDelay = `${index * 0.05}s`;
 
-        // Text parsing for copy/share
-        const tempDivText = document.createElement('div');
-        tempDivText.innerHTML = hadithHtml + (infoHtml || '');
-        const plainText = tempDivText.innerText;
+        // Text parsing for copy/share with beautiful formatting
+        const textHadith = document.createElement('div'); textHadith.innerHTML = hadithHtml;
+        const textInfo = document.createElement('div'); textInfo.innerHTML = (infoHtml || '');
+        
+        let plainText = textHadith.innerText.trim() + '\n\n';
+        let infoStr = textInfo.innerText.trim();
+        // Insert new lines before keywords to make it readable
+        infoStr = infoStr.replace(/([^\n])(الراوي:|المحدث:|المصدر:|الصفحة أو الرقم:|خلاصة حكم المحدث:|التخريج:)/g, '$1\n$2');
+        plainText += infoStr;
 
         // Check favorite status
         const isFav = favorites.some(f => f.plainText === plainText);
@@ -168,6 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 favorites.push({ hadithHtml, infoHtml, originalHtml, plainText });
                 btnFav.classList.add('favorite-active');
                 btnFav.querySelector('svg').setAttribute('fill', 'currentColor');
+                showToast("تمت الإضافة للمفضلة");
             }
             localStorage.setItem('dorar_favorites', JSON.stringify(favorites));
             if (!viewFavorites.classList.contains('hidden')) renderFavorites();
@@ -177,13 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnCopy = document.createElement('button');
         btnCopy.className = 'card-action-btn';
         btnCopy.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
-        btnCopy.title = "نسخ";
+        btnCopy.title = "نسخ الحديث";
         btnCopy.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(plainText);
-                const ogHTML = btnCopy.innerHTML;
-                btnCopy.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-                setTimeout(() => btnCopy.innerHTML = ogHTML, 2000);
+                showToast("تم نسخ الحديث بنجاح!");
             } catch (err) {}
         });
 
@@ -205,8 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         card.appendChild(header);
 
+        // Process visual HTML (Badges)
         const tempContainer = document.createElement('div');
-        tempContainer.innerHTML = hadithHtml + (infoHtml || '');
+        let enhancedInfoHtml = infoHtml || '';
+        // Enhance infoHtml to wrap key-value pairs in .info-item badges if possible
+        // The API returns HTML like: <span class="info-subtitle">الراوي:</span> <span class="info-value">...</span>
+        // We will rely on CSS flex wrap for badges, which we added to style.css.
+        
+        tempContainer.innerHTML = hadithHtml + enhancedInfoHtml;
         while(tempContainer.firstChild) card.appendChild(tempContainer.firstChild);
 
         return card;
@@ -236,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const fragment = document.createDocumentFragment();
         filtered.forEach((item, index) => {
-            const card = createCard(item.hadithHtml, item.infoHtml, item.originalHtml);
+            const card = createCard(item.hadithHtml, item.infoHtml, item.originalHtml, index);
             card.setAttribute('aria-label', `نتيجة رقم ${index + 1}`);
             fragment.appendChild(card);
         });
@@ -262,9 +289,33 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const items = [];
         for (let i = 0; i < hadithElements.length; i++) {
+            let processedInfo = '';
+            if (infoElements[i]) {
+                const clonedInfo = infoElements[i].cloneNode(true);
+                const newInfoDiv = document.createElement('div');
+                newInfoDiv.className = 'hadith-info';
+                
+                let currentItem = null;
+                Array.from(clonedInfo.childNodes).forEach(node => {
+                    if (node.nodeType === 1 && node.classList.contains('info-subtitle')) {
+                        currentItem = document.createElement('div');
+                        currentItem.className = 'info-item';
+                        currentItem.appendChild(node.cloneNode(true));
+                        newInfoDiv.appendChild(currentItem);
+                    } else if (currentItem) {
+                        // Avoid adding empty text nodes as value
+                        if (node.nodeType === 3 && node.textContent.trim() === '') return;
+                        currentItem.appendChild(node.cloneNode(true));
+                    } else {
+                        newInfoDiv.appendChild(node.cloneNode(true));
+                    }
+                });
+                processedInfo = newInfoDiv.outerHTML;
+            }
+
             items.push({
                 hadithHtml: hadithElements[i].outerHTML,
-                infoHtml: infoElements[i] ? infoElements[i].outerHTML : '',
+                infoHtml: processedInfo,
                 originalHtml: htmlString
             });
         }
