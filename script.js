@@ -96,6 +96,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let favorites = [];
     let searchHistory = [];
     let currentFilter = 'all';
+    
+    let currentPage = 1;
+    let currentSearchQuery = '';
+    let hasMorePages = true;
 
     // Settings State
     let appSettings = {
@@ -465,8 +469,38 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    btnLoadMore.addEventListener('click', () => {
-        renderResults(currentResults, resultsContainer, true);
+    let isFetching = false;
+
+    btnLoadMore.addEventListener('click', async () => {
+        // If we still have rendered results to show, just render them
+        let filtered = currentResults;
+        if (currentFilter === 'authentic') {
+            filtered = currentResults.filter(item => {
+                const info = (item.infoHtml || '').toLowerCase();
+                return !info.includes('ضعيف') && !info.includes('منكر') && !info.includes('موضوع') && !info.includes('باطل');
+            });
+        } else if (currentFilter === 'weak') {
+            filtered = currentResults.filter(item => {
+                const info = (item.infoHtml || '').toLowerCase();
+                return info.includes('ضعيف') || info.includes('منكر') || info.includes('موضوع') || info.includes('باطل');
+            });
+        }
+        
+        if (displayedCount < filtered.length) {
+            renderResults(currentResults, resultsContainer, true);
+        } else if (hasMorePages && !isFetching && currentSearchQuery && document.querySelector('input[name="searchSource"]:checked').value !== 'local_9books') {
+            isFetching = true;
+            const originalText = btnLoadMore.textContent;
+            btnLoadMore.textContent = 'جاري التحميل...';
+            btnLoadMore.disabled = true;
+            
+            currentPage++;
+            await performFetch(currentSearchQuery, currentPage, true);
+            
+            btnLoadMore.textContent = originalText;
+            btnLoadMore.disabled = false;
+            isFetching = false;
+        }
     });
 
     function renderResults(items, container, append = false) {
@@ -510,6 +544,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnLoadMore) {
             if (displayedCount < filtered.length) {
                 btnLoadMore.classList.remove('hidden');
+            } else if (hasMorePages && document.querySelector('input[name="searchSource"]:checked').value !== 'local_9books') {
+                btnLoadMore.classList.remove('hidden'); // Show button to trigger next page fetch
             } else {
                 btnLoadMore.classList.add('hidden');
             }
@@ -528,7 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function processDorarHTML(htmlString) {
         if (!htmlString || htmlString.trim() === '') return [];
         const tempDiv = document.createElement('div');
-        // Secure sanitization with DOMPurify if available
         tempDiv.innerHTML = window.DOMPurify ? window.DOMPurify.sanitize(htmlString) : htmlString;
 
         const hadithElements = tempDiv.querySelectorAll('.hadith');
@@ -550,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentItem.appendChild(node.cloneNode(true));
                         newInfoDiv.appendChild(currentItem);
                     } else if (currentItem) {
-                        // Avoid adding empty text nodes as value
                         if (node.nodeType === 3 && node.textContent.trim() === '') return;
                         currentItem.appendChild(node.cloneNode(true));
                     } else {
@@ -570,29 +604,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- API Fetch ---
-    searchForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        searchHistoryContainer.classList.add('hidden');
-        
-        const query = searchInput.value.trim();
-        if (!query) return;
-
-        saveToHistory(query);
-        
+    async function performFetch(query, page, append = false) {
         const searchSource = document.querySelector('input[name="searchSource"]:checked').value;
 
-        loadingIndicator.classList.remove('hidden');
-        resultsContainer.innerHTML = '';
-        resultsSection.setAttribute('aria-busy', 'true');
+        if (!append) {
+            loadingIndicator.classList.remove('hidden');
+            resultsContainer.innerHTML = '';
+            resultsSection.setAttribute('aria-busy', 'true');
+        }
 
         try {
+            let newResults = [];
+            
             if (searchSource === 'local_9books') {
                 if (window.electronAPI && window.electronAPI.searchLocalDb) {
                     const localDataStr = await window.electronAPI.searchLocalDb(query);
                     const localData = JSON.parse(localDataStr);
-                    
-                    currentResults = localData.map(item => ({
+                    newResults = localData.map(item => ({
                         hadithHtml: `<div class="hadith">${item.text}</div>`,
                         infoHtml: `<div class="hadith-info">
                             <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
@@ -603,8 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
                     const localDataStr = await window.pywebview.api.search_local_hadith(query);
                     const localData = JSON.parse(localDataStr);
-                    
-                    currentResults = localData.map(item => ({
+                    newResults = localData.map(item => ({
                         hadithHtml: `<div class="hadith">${item.text}</div>`,
                         infoHtml: `<div class="hadith-info">
                             <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
@@ -612,14 +639,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>`,
                         originalHtml: ""
                     }));
-                } else {
-                    currentResults = [];
                 }
+                hasMorePages = false; // Local DB search doesn't paginate yet
             } else {
                 let dorarData = null;
 
-                // 1. Try to load from Local Cache (Offline Database) First
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.get_from_cache) {
+                // 1. Try to load from Local Cache ONLY for page 1
+                if (page === 1 && window.pywebview && window.pywebview.api && window.pywebview.api.get_from_cache) {
                     try {
                         const cachedData = await window.pywebview.api.get_from_cache(query);
                         if (cachedData) {
@@ -628,34 +654,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) { console.error("Cache error:", e); }
                 }
 
-                // 2. If not found in cache, fetch from internet
+                // 2. Fetch from internet if no cache or requesting page > 1
                 if (!dorarData) {
                     if (!navigator.onLine) {
-                        loadingIndicator.classList.add('hidden');
-                        resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
+                        if (!append) {
+                            loadingIndicator.classList.add('hidden');
+                            resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
+                        } else {
+                            showToast("لا يمكن جلب المزيد بدون إنترنت.");
+                        }
                         return;
                     }
+                    
                     // Try Electron API first
                     if (window.electronAPI && window.electronAPI.fetchDorar) {
                         try {
-                            const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`);
+                            const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}&page=${page}`);
                             dorarData = JSON.parse(rawResponse);
-                        } catch (e) {
-                            console.error("Electron API search failed", e);
-                        }
+                        } catch (e) { console.error("Electron API search failed", e); }
                     } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
                         try {
-                            console.log("Trying Python api.search...");
-                            const rawResponse = await window.pywebview.api.search(query);
-                            if (rawResponse) {
-                                dorarData = JSON.parse(rawResponse);
-                                console.log("Python api.search succeeded.");
-                            } else {
-                                console.log("Python api.search returned null or empty.");
-                            }
-                        } catch (e) {
-                            console.error("Pywebview API search failed", e);
-                        }
+                            const rawResponse = await window.pywebview.api.search(query, page);
+                            if (rawResponse) dorarData = JSON.parse(rawResponse);
+                        } catch (e) { console.error("Pywebview API search failed", e); }
                     } 
 
                     // Fallback to Capacitor HTTP
@@ -663,32 +684,29 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             const options = {
                                 url: `https://dorar.net/dorar_api.json`,
-                                params: { skey: query },
+                                params: { skey: query, page: page.toString() },
                                 headers: { 'User-Agent': 'DorarHadithApp Mobile' }
                             };
                             const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
                             dorarData = JSON.parse(response.data);
                         } catch (e) {
-                            console.error("Capacitor HTTP direct failed, trying proxy...", e);
                             try {
-                                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`)}`;
+                                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}&page=${page}`)}`;
                                 const proxyResponse = await window.Capacitor.Plugins.CapacitorHttp.get({ url: proxyUrl });
                                 const proxyData = JSON.parse(proxyResponse.data);
                                 if (proxyData && proxyData.contents) {
                                     dorarData = JSON.parse(proxyData.contents);
                                 }
-                            } catch (proxyError) {
-                                console.error("Capacitor HTTP Proxy failed", proxyError);
-                            }
+                            } catch (proxyError) { }
                         }
                     }
                     
                     if (!dorarData) {
-                        dorarData = await fetchDorarJSONP(query);
+                        dorarData = await fetchDorarJSONP(query, page);
                     }
 
-                    // 3. Save the new fetched data to Local Cache
-                    if (dorarData && window.pywebview && window.pywebview.api && window.pywebview.api.save_to_cache) {
+                    // 3. Save page 1 to Local Cache
+                    if (page === 1 && dorarData && window.pywebview && window.pywebview.api && window.pywebview.api.save_to_cache) {
                         try {
                             window.pywebview.api.save_to_cache(query, JSON.stringify(dorarData));
                         } catch (e) {}
@@ -696,30 +714,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (!dorarData || !dorarData.ahadith || !dorarData.ahadith.result) {
-                    currentResults = [];
+                    newResults = [];
+                    hasMorePages = false;
                 } else {
-                    currentResults = processDorarHTML(dorarData.ahadith.result);
+                    newResults = processDorarHTML(dorarData.ahadith.result);
+                    if (newResults.length === 0) hasMorePages = false;
+                    else hasMorePages = true;
                 }
             }
 
-            displayedCount = 0;
-            resultsContainer.innerHTML = '';
-            
-            containerNotif.style.display = 'block';
+            if (append) {
+                currentResults = currentResults.concat(newResults);
+                renderResults(currentResults, resultsContainer, true);
+            } else {
+                currentResults = newResults;
+                displayedCount = 0;
+                resultsContainer.innerHTML = '';
+                
+                containerNotif.style.display = 'block';
 
-            if (currentResults.length === 0) {
+                if (currentResults.length === 0) {
                     resultsContainer.innerHTML = '<div class="empty-state">لا توجد أحاديث مطابقة لبحثك.</div>';
                 } else {
                     renderResults(currentResults, resultsContainer);
-                    
                     setTimeout(() => {
                         const firstCard = resultsContainer.querySelector('.hadith-card');
                         if (firstCard) firstCard.focus();
                     }, 100);
                 }
+            }
         } catch (err) {
-            loadingIndicator.classList.add('hidden');
-            resultsContainer.innerHTML = `<div class="error-message" role="alert">عذراً، حدث خطأ أثناء جلب البيانات. تأكد من الاتصال بالإنترنت.</div>`;
+            if (!append) {
+                resultsContainer.innerHTML = `<div class="error-message" role="alert">عذراً، حدث خطأ أثناء جلب البيانات. تأكد من الاتصال بالإنترنت.</div>`;
+            } else {
+                showToast("حدث خطأ أثناء تحميل المزيد.");
+                currentPage--; // Revert page number on failure
+            }
             announce("حدث خطأ أثناء البحث. يرجى التحقق من اتصالك بالإنترنت.");
             
             if (window.electronAPI && window.electronAPI.logError) {
@@ -727,7 +757,26 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
                 window.pywebview.api.log_error(err.toString() + " | Stack: " + (err.stack || "No stack"));
             }
+        } finally {
+            if (!append) loadingIndicator.classList.add('hidden');
         }
+    }
+
+    searchForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        searchHistoryContainer.classList.add('hidden');
+        
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        saveToHistory(query);
+        
+        currentPage = 1;
+        currentSearchQuery = query;
+        hasMorePages = true;
+        
+        await performFetch(query, currentPage, false);
     });
 
     // --- Smart Notifications ---
@@ -809,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- API Fetch via JSONP ---
-    function fetchDorarJSONP(keyword) {
+    function fetchDorarJSONP(keyword, page = 1) {
         return new Promise((resolve, reject) => {
             const callbackName = 'dorar_cb_' + Math.round(100000 * Math.random());
             window[callbackName] = function(data) {
@@ -819,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             const script = document.createElement('script');
-            const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}&callback=${callbackName}`;
+            const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}&page=${page}&callback=${callbackName}`;
             script.src = targetUrl;
             
             script.onerror = () => {

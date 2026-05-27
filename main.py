@@ -52,11 +52,11 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 class Api:
-    def search(self, query):
+    def search(self, query, page=1):
         import ssl
         context = ssl._create_unverified_context()
         
-        target_url = "https://dorar.net/dorar_api.json?skey=" + urllib.parse.quote(query)
+        target_url = f"https://dorar.net/dorar_api.json?skey={urllib.parse.quote(query)}&page={page}"
         req = urllib.request.Request(
             target_url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
