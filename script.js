@@ -533,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsSection.setAttribute('aria-busy', 'true');
 
         try {
-            if (searchSource === 'local_bukhari') {
+            if (searchSource === 'local_9books') {
                 if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
                     const localDataStr = await window.pywebview.api.search_local_hadith(query);
                     const localData = JSON.parse(localDataStr);
@@ -611,7 +611,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (firstCard) firstCard.focus();
                     }, 100);
                 }
-            }
         } catch (err) {
             loadingIndicator.classList.add('hidden');
             resultsContainer.innerHTML = `<div class="error-message" role="alert">عذراً، حدث خطأ أثناء جلب البيانات. تأكد من الاتصال بالإنترنت.</div>`;
