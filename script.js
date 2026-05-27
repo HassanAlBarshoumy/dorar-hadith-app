@@ -25,6 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const liveAnnouncer = document.getElementById('live-announcer');
     const btnBackToTop = document.getElementById('btn-back-to-top');
+    const btnLoadMore = document.getElementById('btn-load-more');
+    const offlineBanner = document.getElementById('offline-banner');
+
+    // --- Offline Status ---
+    function updateOfflineStatus() {
+        if (navigator.onLine) {
+            offlineBanner.classList.add('hidden');
+            searchButton.disabled = false;
+            searchInput.placeholder = "ابحث هنا (مثال: صلاة، صوم...)";
+        } else {
+            offlineBanner.classList.remove('hidden');
+            searchButton.disabled = true;
+            searchInput.placeholder = "البحث معطل (غير متصل بالإنترنت)";
+        }
+    }
+    window.addEventListener('online', updateOfflineStatus);
+    window.addEventListener('offline', updateOfflineStatus);
+    updateOfflineStatus();
 
     // --- Screen Reader Announcer ---
     function announce(message) {
@@ -37,6 +55,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- State ---
     let currentResults = []; // Store original fetched HTML strings
+    let displayedCount = 0;
+    const ITEMS_PER_PAGE = 20;
     let favorites = JSON.parse(localStorage.getItem('dorar_favorites')) || [];
     let searchHistory = JSON.parse(localStorage.getItem('dorar_history')) || [];
     let currentFilter = 'all';
@@ -299,8 +319,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    function renderResults(items, container) {
-        container.innerHTML = '';
+    btnLoadMore.addEventListener('click', () => {
+        renderResults(currentResults, resultsContainer, true);
+    });
+
+    function renderResults(items, container, append = false) {
+        if (!append) {
+            container.innerHTML = '';
+            displayedCount = 0;
+            if (btnLoadMore) btnLoadMore.classList.add('hidden');
+        }
         
         // Filtering
         let filtered = items;
@@ -316,19 +344,30 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        if (filtered.length === 0) {
+        if (filtered.length === 0 && !append) {
             container.innerHTML = '<div class="empty-state" role="status">لا توجد نتائج مطابقة للتصفية الحالية.</div>';
             announce("لا توجد نتائج مطابقة للتصفية الحالية.");
             return;
         }
 
         const fragment = document.createDocumentFragment();
-        filtered.forEach((item, index) => {
-            const card = createCard(item.hadithHtml, item.infoHtml, item.originalHtml, index);
+        const nextBatch = filtered.slice(displayedCount, displayedCount + ITEMS_PER_PAGE);
+        
+        nextBatch.forEach((item, index) => {
+            const card = createCard(item.hadithHtml, item.infoHtml, item.originalHtml, displayedCount + index);
             fragment.appendChild(card);
         });
 
         container.appendChild(fragment);
+        displayedCount += nextBatch.length;
+
+        if (btnLoadMore) {
+            if (displayedCount < filtered.length) {
+                btnLoadMore.classList.remove('hidden');
+            } else {
+                btnLoadMore.classList.add('hidden');
+            }
+        }
     }
 
     function renderFavorites() {
@@ -339,10 +378,12 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResults(favorites, favoritesContainer);
     }
 
+    // --- Data Parsing ---
     function processDorarHTML(htmlString) {
         if (!htmlString || htmlString.trim() === '') return [];
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlString;
+        // Secure sanitization with DOMPurify if available
+        tempDiv.innerHTML = window.DOMPurify ? window.DOMPurify.sanitize(htmlString) : htmlString;
 
         const hadithElements = tempDiv.querySelectorAll('.hadith');
         const infoElements = tempDiv.querySelectorAll('.hadith-info');
@@ -385,6 +426,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- API Fetch ---
     searchForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        if (!navigator.onLine) {
+            announce("أنت حالياً غير متصل بالإنترنت. لا يمكن إجراء البحث.");
+            return;
+        }
+
         searchHistoryContainer.classList.add('hidden');
         
         const query = searchInput.value.trim();
@@ -409,14 +456,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
                 const response = await window.Capacitor.Plugins.CapacitorHttp.get({ url: targetUrl });
                 dorarData = JSON.parse(response.data);
-            } else if (typeof process !== 'undefined' && process.versions && process.versions.electron) {
-                // Desktop Native (Electron)
+            } else if (window.electronAPI) {
+                // Desktop Native (Electron Secure IPC)
                 const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
-                const response = await fetch(targetUrl);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.text();
-                // Electron might receive raw JSON, unlike allorigins which wraps it
-                dorarData = JSON.parse(data);
+                const response = await window.electronAPI.fetchDorar(targetUrl);
+                dorarData = JSON.parse(response);
             } else {
                 // Web Fallback (CORS Proxy)
                 const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;

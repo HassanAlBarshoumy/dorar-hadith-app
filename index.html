@@ -49,6 +49,12 @@
                 <section class="search-section sticky-header" aria-labelledby="search-heading">
                     <h2 id="search-heading" class="sr-only">نافذة البحث</h2>
                     
+                    <!-- Offline Banner -->
+                    <div id="offline-banner" class="offline-banner hidden" role="alert" aria-live="assertive">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+                        <span>أنت حالياً غير متصل بالإنترنت. يمكنك تصفح المفضلة والسجل فقط.</span>
+                    </div>
+
                     <form id="search-form" class="search-form" role="search" aria-label="البحث في الأحاديث">
                         <div class="input-group">
                             <label for="search-input" class="sr-only">أدخل كلمة البحث</label>
@@ -96,6 +102,7 @@
                     <ul id="results-container" class="results-list">
                         <!-- Results will be injected here -->
                     </ul>
+                    <button id="btn-load-more" class="btn-load-more hidden" aria-label="تحميل المزيد من الأحاديث">تحميل المزيد</button>
                 </section>
             </div>
 
@@ -158,7 +165,8 @@
     <!-- Live Announcer for Screen Readers -->
     <div id="live-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Script file -->
+    <!-- Scripts -->
+    <script src="./purify.min.js"></script>
     <script src="./script.js"></script>
 </body>
 </html>

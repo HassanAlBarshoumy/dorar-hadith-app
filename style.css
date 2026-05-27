@@ -629,3 +629,37 @@ body.theme-dark .sticky-header,
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-color); 
 }
+
+/* Offline Banner */
+.offline-banner {
+    background-color: rgba(229, 62, 62, 0.1);
+    color: #e53e3e;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+/* Load More Button */
+.btn-load-more {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    margin-top: 1.5rem;
+    background-color: var(--surface-color);
+    color: var(--primary-color);
+    border: 2px dashed var(--primary-color);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-load-more:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
