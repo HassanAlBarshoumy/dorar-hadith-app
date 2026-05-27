@@ -624,22 +624,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data && data.ahadith && data.ahadith.result) {
                 const results = processDorarHTML(data.ahadith.result);
-                const authentic = results.filter(r => r.degree.includes('صحيح') || r.degree.includes('حسن'));
+                const authentic = results.filter(r => r.degree.includes('صحيح') || r.degree.includes('حسن') || r.degree.includes('إسناده'));
                 if (authentic.length > 0) {
                     const randomHadith = authentic[Math.floor(Math.random() * authentic.length)];
                     const title = "الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'فائدة عشوائية' : cat);
                     const body = `${randomHadith.text}\n\nالراوي: ${randomHadith.rawi}\nالمحدث: ${randomHadith.muhaddith}\nخلاصة: ${randomHadith.degree}`;
                     
                     if (window.electronAPI && window.electronAPI.showNotification) {
-                        window.electronAPI.showNotification({ title: title, body: body, icon: 'icon.ico' });
+                        window.electronAPI.showNotification({ title: title, body: body });
                     } else {
-                        new Notification(title, { body: body, icon: 'icon.ico' });
+                        new Notification(title, { body: body });
                     }
+                } else if (force) {
+                    if (window.electronAPI && window.electronAPI.showNotification) {
+                        window.electronAPI.showNotification({ title: "تجربة الإشعار", body: "لم يتم العثور على حديث صحيح لهذه الفئة في هذه المحاولة." });
+                    }
+                }
+            } else if (force) {
+                if (window.electronAPI && window.electronAPI.showNotification) {
+                    window.electronAPI.showNotification({ title: "خطأ", body: "لم نتمكن من جلب البيانات من الخادم." });
                 }
             }
         } catch (err) {
             if (window.electronAPI && window.electronAPI.logError) {
                 window.electronAPI.logError(`Notification error: ${err}`);
+            }
+            if (force && window.electronAPI && window.electronAPI.showNotification) {
+                window.electronAPI.showNotification({ title: "خطأ", body: "حدث خطأ أثناء الاتصال بالإنترنت أو الخادم." });
             }
         }
     }

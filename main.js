@@ -46,9 +46,22 @@ ipcMain.on('log-error', (event, msg) => {
 
 const { Notification } = require('electron');
 ipcMain.on('show-notification', (event, options) => {
-  if (Notification.isSupported()) {
-    const notification = new Notification(options);
-    notification.show();
+  try {
+    if (Notification.isSupported()) {
+      delete options.icon; // Remove icon to avoid path issues if it doesn't exist
+      const notification = new Notification(options);
+      notification.on('failed', (err, error) => {
+        const logPath = path.join(app.getPath('userData'), 'error_log.txt');
+        fs.appendFileSync(logPath, `Notification Failed: ${error}\n`);
+      });
+      notification.show();
+    } else {
+      const logPath = path.join(app.getPath('userData'), 'error_log.txt');
+      fs.appendFileSync(logPath, `Notification is not supported on this OS.\n`);
+    }
+  } catch(e) {
+    const logPath = path.join(app.getPath('userData'), 'error_log.txt');
+    fs.appendFileSync(logPath, `Notification crash: ${e.message}\n`);
   }
 });
 
