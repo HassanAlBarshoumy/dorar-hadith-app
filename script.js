@@ -617,7 +617,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 data = JSON.parse(response);
             } else {
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`)}`;
-                const res = await fetch(proxyUrl);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const res = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
                 const json = await res.json();
                 data = JSON.parse(json.contents);
             }
