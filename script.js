@@ -722,14 +722,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     hasMorePages = false;
                 } else {
                     newResults = processDorarHTML(dorarData.ahadith.result);
+                    
+                    // Dorar API endpoint currently ignores pagination and returns identical results for page > 1.
+                    // Prevent appending duplicate results if we receive the exact same first item.
+                    if (append && newResults.length > 0 && currentResults.length > 0) {
+                        if (newResults[0].hadithHtml === currentResults[0].hadithHtml) {
+                            newResults = [];
+                            showToast("لا توفر واجهة الدرر السنية نتائج إضافية لهذا البحث.", 4000);
+                        }
+                    }
+
                     if (newResults.length === 0) hasMorePages = false;
                     else hasMorePages = true;
                 }
             }
 
             if (append) {
-                currentResults = currentResults.concat(newResults);
-                renderResults(currentResults, resultsContainer, true);
+                if (newResults.length > 0) {
+                    currentResults = currentResults.concat(newResults);
+                    renderResults(currentResults, resultsContainer, true);
+                } else {
+                    btnLoadMore.classList.add('hidden'); // Hide load more if no new results
+                }
             } else {
                 currentResults = newResults;
                 displayedCount = 0;
