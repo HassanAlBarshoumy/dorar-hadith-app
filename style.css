@@ -471,7 +471,19 @@ body.theme-dark .search-keys,
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    counter-reset: hadith-counter;
 }
+
+.hadith-card {
+    counter-increment: hadith-counter;
+}
+
+.hadith-card .hadith::before {
+    content: counter(hadith-counter) " - ";
+    color: var(--primary-light);
+    font-weight: 700;
+}
+
 
 .hadith-card {
     /* Existing card styles are applied */
