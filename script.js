@@ -436,8 +436,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFav.addEventListener('click', () => {
             if (btnFav.classList.contains('favorite-active')) {
                 favorites = favorites.filter(f => f.plainText !== plainText);
+                appSettings.favorites = favorites;
+                saveAllSettings();
                 btnFav.classList.remove('favorite-active');
                 btnFav.querySelector('svg').setAttribute('fill', 'none');
+                showToast("تم الإزالة من المفضلة");
             } else {
                 favorites.push({ hadithHtml, infoHtml, originalHtml, plainText });
                 appSettings.favorites = favorites;
@@ -1044,6 +1047,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Start by loading settings
-    loadAllSettings();
+        // Start by loading settings
+    let initialized = false;
+    function initApp() {
+        if (initialized) return;
+        initialized = true;
+        loadAllSettings().then(() => {
+            applyTheme(appSettings.theme, false);
+            applyFontSize(appSettings.fontsize, false);
+            renderFavorites();
+            if (typeof updateHistoryDropdown === 'function') updateHistoryDropdown();
+        });
+    }
+
+    if (window.electronAPI) {
+        initApp();
+    } else {
+        window.addEventListener('pywebviewready', initApp);
+        // Fallback for normal browser
+        setTimeout(initApp, 800);
+    }
 });
