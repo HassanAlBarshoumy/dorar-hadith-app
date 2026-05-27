@@ -320,25 +320,34 @@ document.addEventListener('DOMContentLoaded', () => {
             searchHistoryContainer.classList.add('hidden');
         }
         
-        // --- Arrow Navigation for Cards ---
+        // --- Roving TabIndex Navigation for Cards ---
         if (e.target.classList.contains('hadith-card')) {
+            const updateRovingFocus = (oldCard, newCard) => {
+                if (!newCard) return;
+                oldCard.setAttribute('tabindex', '-1');
+                oldCard.querySelectorAll('button, textarea').forEach(el => el.setAttribute('tabindex', '-1'));
+                newCard.setAttribute('tabindex', '0');
+                newCard.querySelectorAll('button, textarea').forEach(el => el.setAttribute('tabindex', '0'));
+                newCard.focus();
+            };
+
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                const next = e.target.nextElementSibling;
-                if (next && next.classList.contains('hadith-card')) {
-                    e.target.setAttribute('tabindex', '-1');
-                    next.setAttribute('tabindex', '0');
-                    next.focus();
-                }
+                updateRovingFocus(e.target, e.target.nextElementSibling);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 const prev = e.target.previousElementSibling;
                 if (prev && prev.classList.contains('hadith-card')) {
-                    e.target.setAttribute('tabindex', '-1');
-                    prev.setAttribute('tabindex', '0');
-                    prev.focus();
+                    updateRovingFocus(e.target, prev);
+                } else if (!prev) {
+                    document.getElementById('search-input').focus();
                 }
-                else if (!prev) document.getElementById('search-input').focus();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                updateRovingFocus(e.target, document.getElementById('results-container').firstElementChild);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                updateRovingFocus(e.target, document.getElementById('results-container').lastElementChild);
             }
         }
     });
@@ -444,28 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Rendering Cards ---
 
-    resultsContainer.addEventListener('keydown', (e) => {
-        const active = document.activeElement;
-        if (!active || !active.classList.contains('hadith-card')) return;
-        
-        if (e.key === 'Home') {
-            e.preventDefault();
-            const first = resultsContainer.firstElementChild;
-            if (first) first.focus();
-        } else if (e.key === 'End') {
-            e.preventDefault();
-            const last = resultsContainer.lastElementChild;
-            if (last) last.focus();
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            const next = active.nextElementSibling;
-            if (next && next.classList.contains('hadith-card')) next.focus();
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            const prev = active.previousElementSibling;
-            if (prev && prev.classList.contains('hadith-card')) prev.focus();
-        }
-    });
+
 
     function createCard(hadithHtml, infoHtml, originalHtml, index = 0) {
         const card = document.createElement('li');
@@ -545,30 +533,30 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Process visual HTML (Badges)
         const contentId = `hadith-content-${Date.now()}-${index}`;
-        const contentWrapper = document.createElement('div');
-        contentWrapper.id = contentId;
-        contentWrapper.className = 'hadith-text-box';
-        contentWrapper.setAttribute('contenteditable', 'true');
-        contentWrapper.setAttribute('role', 'textbox');
-        contentWrapper.setAttribute('aria-readonly', 'true');
-        contentWrapper.setAttribute('aria-multiline', 'true');
-        contentWrapper.setAttribute('tabindex', '0');
         
-        // Prevent editing but allow screen reader navigation
-        contentWrapper.addEventListener('keydown', (e) => {
-            const allowedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', 'PageUp', 'PageDown', 'Shift', 'Control', 'Alt', 'c', 'a', 'C', 'A'];
-            if (!allowedKeys.includes(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                e.preventDefault();
-            } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                e.preventDefault();
-            }
-        });
-        contentWrapper.addEventListener('paste', e => e.preventDefault());
-        contentWrapper.addEventListener('cut', e => e.preventDefault());
-        
+        // Visual Layer
+        const visualContent = document.createElement('div');
+        visualContent.id = contentId;
+        visualContent.className = 'hadith-content-visual';
+        visualContent.setAttribute('aria-hidden', 'true');
         let enhancedInfoHtml = infoHtml || '';
-        contentWrapper.innerHTML = hadithHtml + enhancedInfoHtml;
-        card.appendChild(contentWrapper);
+        visualContent.innerHTML = hadithHtml + enhancedInfoHtml;
+        card.appendChild(visualContent);
+        
+        // SR Textarea Layer
+        const srTextarea = document.createElement('textarea');
+        srTextarea.className = 'sr-only';
+        srTextarea.setAttribute('readonly', 'true');
+        srTextarea.setAttribute('tabindex', index === 0 ? '0' : '-1');
+        srTextarea.setAttribute('aria-label', `نص الحديث`);
+        srTextarea.value = plainText;
+        card.appendChild(srTextarea);
+        
+        // Set tabindices for buttons
+        const tabIndexVal = index === 0 ? '0' : '-1';
+        btnFav.setAttribute('tabindex', tabIndexVal);
+        btnCopy.setAttribute('tabindex', tabIndexVal);
+        btnShare.setAttribute('tabindex', tabIndexVal);
         
         // Append action buttons at the bottom
         card.appendChild(header);
