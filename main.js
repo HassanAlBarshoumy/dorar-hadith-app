@@ -44,7 +44,18 @@ ipcMain.on('log-error', (event, msg) => {
   }
 });
 
+const { Notification } = require('electron');
+ipcMain.on('show-notification', (event, options) => {
+  if (Notification.isSupported()) {
+    const notification = new Notification(options);
+    notification.show();
+  }
+});
+
 app.whenReady().then(() => {
+  if (process.platform === 'win32') {
+    app.setAppUserModelId("com.dorar.hadith");
+  }
   createWindow();
 
   app.on('activate', () => {

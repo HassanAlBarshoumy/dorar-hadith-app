@@ -557,6 +557,19 @@ document.addEventListener('DOMContentLoaded', () => {
         intervalSelectNotif.addEventListener('change', saveNotifSettings);
         categorySelectNotif.addEventListener('change', saveNotifSettings);
         
+        const btnTestNotif = document.getElementById('btn-test-notif');
+        if (btnTestNotif) {
+            btnTestNotif.addEventListener('click', (e) => {
+                e.preventDefault();
+                btnTestNotif.textContent = 'جاري جلب الفائدة...';
+                btnTestNotif.disabled = true;
+                triggerNotification().finally(() => {
+                    btnTestNotif.textContent = 'جرب الإشعار الآن';
+                    btnTestNotif.disabled = false;
+                });
+            });
+        }
+        
         startNotificationTimer();
     }
 
@@ -612,10 +625,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const authentic = results.filter(r => r.degree.includes('صحيح') || r.degree.includes('حسن'));
                 if (authentic.length > 0) {
                     const randomHadith = authentic[Math.floor(Math.random() * authentic.length)];
-                    new Notification("الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'فائدة عشوائية' : cat), {
-                        body: `${randomHadith.text}\n\nالراوي: ${randomHadith.rawi}\nالمحدث: ${randomHadith.muhaddith}\nخلاصة: ${randomHadith.degree}`,
-                        icon: 'icon.ico'
-                    });
+                    const title = "الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'فائدة عشوائية' : cat);
+                    const body = `${randomHadith.text}\n\nالراوي: ${randomHadith.rawi}\nالمحدث: ${randomHadith.muhaddith}\nخلاصة: ${randomHadith.degree}`;
+                    
+                    if (window.electronAPI && window.electronAPI.showNotification) {
+                        window.electronAPI.showNotification({ title: title, body: body, icon: 'icon.ico' });
+                    } else {
+                        new Notification(title, { body: body, icon: 'icon.ico' });
+                    }
                 }
             }
         } catch (err) {
