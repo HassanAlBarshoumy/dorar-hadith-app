@@ -29,6 +29,9 @@
     },
     "directories": {
       "output": "release"
-    }
+    },
+    "extraResources": [
+      "local_hadith.db"
+    ]
   }
 }

@@ -70,28 +70,16 @@ ipcMain.handle('fetch-dorar', async (event, url) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    let response;
-    try {
-      response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        },
-        signal: controller.signal
-      });
-      if (!response.ok) throw new Error('Primary fetch failed');
-    } catch (e) {
-      // Fallback proxy
-      const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(url);
-      response = await fetch(proxyUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        },
-        signal: controller.signal
-      });
-      if (!response.ok) throw new Error('Proxy fetch failed');
-    }
+    const response = await net.fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      signal: controller.signal
+    });
     
     clearTimeout(timeoutId);
+    
+    if (!response.ok) throw new Error('Primary fetch failed with status ' + response.status);
     return await response.text();
   } catch (err) {
     const logPath = path.join(app.getPath('userData'), 'error_log.txt');

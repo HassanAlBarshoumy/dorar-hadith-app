@@ -830,12 +830,12 @@ const contentWrapper = document.createElement('div');
                                 headers: { 'User-Agent': 'DorarHadithApp Mobile' }
                             };
                             const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
-                            dorarData = JSON.parse(response.data);
+                            dorarData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
                         } catch (e) {
                             try {
                                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}&page=${page}`)}`;
                                 const proxyResponse = await window.Capacitor.Plugins.CapacitorHttp.get({ url: proxyUrl });
-                                dorarData = JSON.parse(proxyResponse.data);
+                                dorarData = typeof proxyResponse.data === 'string' ? JSON.parse(proxyResponse.data) : proxyResponse.data;
                             } catch (proxyError) { }
                         }
                     }
@@ -1111,7 +1111,16 @@ const contentWrapper = document.createElement('div');
     
         // Start by loading settings
     let initialized = false;
-    function initApp() {
+    
+      function initApp() {
+          if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+              const localRadio = document.querySelector('input[value="local_9books"]');
+              if (localRadio) {
+                  localRadio.parentElement.style.display = 'none';
+                  document.querySelector('input[value="dorar"]').checked = true;
+              }
+          }
+
         if (initialized) return;
         initialized = true;
         loadAllSettings().then(() => {
