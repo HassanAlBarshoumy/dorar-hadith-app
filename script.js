@@ -325,9 +325,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const updateRovingFocus = (oldCard, newCard) => {
                 if (!newCard) return;
                 oldCard.setAttribute('tabindex', '-1');
-                oldCard.querySelectorAll('button, textarea').forEach(el => el.setAttribute('tabindex', '-1'));
+                oldCard.querySelectorAll('button, [contenteditable]').forEach(el => el.setAttribute('tabindex', '-1'));
                 newCard.setAttribute('tabindex', '0');
-                newCard.querySelectorAll('button, textarea').forEach(el => el.setAttribute('tabindex', '0'));
+                newCard.querySelectorAll('button, [contenteditable]').forEach(el => el.setAttribute('tabindex', '0'));
                 newCard.focus();
             };
 
@@ -537,23 +537,32 @@ document.addEventListener('DOMContentLoaded', () => {
         // Process visual HTML (Badges)
         const contentId = `hadith-content-${Date.now()}-${index}`;
         
-        // Visual Layer
-        const visualContent = document.createElement('div');
-        visualContent.id = contentId;
-        visualContent.className = 'hadith-content-visual';
-        visualContent.setAttribute('aria-hidden', 'true');
-        let enhancedInfoHtml = infoHtml || '';
-        visualContent.innerHTML = hadithHtml + enhancedInfoHtml;
-        card.appendChild(visualContent);
+const contentWrapper = document.createElement('div');
+        contentWrapper.id = contentId;
+        contentWrapper.className = 'hadith-text-box';
+        contentWrapper.setAttribute('contenteditable', 'true');
+        contentWrapper.setAttribute('role', 'textbox');
+        contentWrapper.setAttribute('aria-readonly', 'true');
+        contentWrapper.setAttribute('aria-roledescription', 'مربع نص للقراءة فقط');
+        contentWrapper.setAttribute('aria-multiline', 'true');
+        contentWrapper.setAttribute('aria-label', 'نص الحديث');
+        contentWrapper.setAttribute('tabindex', index === 0 ? '0' : '-1');
         
-        // SR Textarea Layer
-        const srTextarea = document.createElement('textarea');
-        srTextarea.className = 'sr-only';
-        srTextarea.setAttribute('readonly', 'true');
-        srTextarea.setAttribute('tabindex', index === 0 ? '0' : '-1');
-        srTextarea.setAttribute('aria-label', `نص الحديث`);
-        srTextarea.value = plainText;
-        card.appendChild(srTextarea);
+        // Prevent editing but allow screen reader navigation
+        contentWrapper.addEventListener('keydown', (e) => {
+            const allowedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', 'PageUp', 'PageDown', 'Shift', 'Control', 'Alt', 'c', 'a', 'C', 'A'];
+            if (!allowedKeys.includes(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+            }
+        });
+        contentWrapper.addEventListener('paste', e => e.preventDefault());
+        contentWrapper.addEventListener('cut', e => e.preventDefault());
+        
+        let enhancedInfoHtml = infoHtml || '';
+        contentWrapper.innerHTML = hadithHtml + enhancedInfoHtml;
+        card.appendChild(contentWrapper);
         
         // Set tabindices for buttons
         const tabIndexVal = index === 0 ? '0' : '-1';
