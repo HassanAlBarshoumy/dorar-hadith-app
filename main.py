@@ -194,6 +194,6 @@ $notifier.Show($toast)
 if __name__ == '__main__':
     init_db()
     api = Api()
-    html_file = resource_path('index.html')
+    html_file = resource_path('main_app.html')
     webview.create_window('تطبيق الموسوعة الحديثية', url=html_file, js_api=api, width=900, height=700)
     webview.start(http_server=True)
