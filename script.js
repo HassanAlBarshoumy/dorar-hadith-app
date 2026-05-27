@@ -66,26 +66,96 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- In-App Toast Notifications ---
+    function showInAppNotification(title, body) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.innerHTML = `<strong>${title}</strong><p style="margin: 0.5rem 0 0; font-size: 0.9em; white-space: pre-wrap;">${body}</p>`;
+        
+        container.appendChild(toast);
+        announce(`${title}: ${body}`);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 8000);
+    }
+
     // --- State ---
     let currentResults = []; // Store original fetched HTML strings
     let displayedCount = 0;
     const ITEMS_PER_PAGE = 20;
-    let favorites = JSON.parse(localStorage.getItem('dorar_favorites')) || [];
-    let searchHistory = JSON.parse(localStorage.getItem('dorar_history')) || [];
+    let favorites = [];
+    let searchHistory = [];
     let currentFilter = 'all';
 
-    // --- Init Settings ---
-    const savedTheme = localStorage.getItem('dorar_theme') || 'auto';
-    const savedFontSize = localStorage.getItem('dorar_fontsize') || 'md';
-    applyTheme(savedTheme, false);
-    applyFontSize(savedFontSize, false);
-    themeSelect.value = savedTheme;
-    fontsizeSelect.value = savedFontSize;
+    // Settings State
+    let appSettings = {
+        theme: 'auto',
+        fontsize: 'md',
+        favorites: [],
+        history: [],
+        notif: { enabled: false, interval: 60, category: 'عشوائي' }
+    };
+
+    // --- Persistent Storage Logic ---
+    async function loadAllSettings() {
+        try {
+            if (window.electronAPI && window.electronAPI.getSettings) {
+                const settingsStr = await window.electronAPI.getSettings();
+                if (settingsStr) {
+                    appSettings = { ...appSettings, ...JSON.parse(settingsStr) };
+                } else {
+                    loadFromLocalStorage(); // Fallback if file doesn't exist
+                }
+            } else {
+                loadFromLocalStorage();
+            }
+        } catch (e) {
+            loadFromLocalStorage();
+        }
+        
+        favorites = appSettings.favorites || [];
+        searchHistory = appSettings.history || [];
+        
+        applyTheme(appSettings.theme, false);
+        applyFontSize(appSettings.fontsize, false);
+        themeSelect.value = appSettings.theme;
+        fontsizeSelect.value = appSettings.fontsize;
+
+        setupNotifications(); // Initialize notifications after load
+    }
+
+    function loadFromLocalStorage() {
+        appSettings.theme = localStorage.getItem('dorar_theme') || 'auto';
+        appSettings.fontsize = localStorage.getItem('dorar_fontsize') || 'md';
+        appSettings.favorites = JSON.parse(localStorage.getItem('dorar_favorites')) || [];
+        appSettings.history = JSON.parse(localStorage.getItem('dorar_history')) || [];
+        appSettings.notif = JSON.parse(localStorage.getItem('dorar_notif_settings')) || appSettings.notif;
+    }
+
+    function saveAllSettings() {
+        // Always save to localStorage as a fallback
+        localStorage.setItem('dorar_theme', appSettings.theme);
+        localStorage.setItem('dorar_fontsize', appSettings.fontsize);
+        localStorage.setItem('dorar_favorites', JSON.stringify(appSettings.favorites));
+        localStorage.setItem('dorar_history', JSON.stringify(appSettings.history));
+        localStorage.setItem('dorar_notif_settings', JSON.stringify(appSettings.notif));
+        
+        if (window.electronAPI && window.electronAPI.saveSettings) {
+            window.electronAPI.saveSettings(JSON.stringify(appSettings));
+        }
+    }
 
     function applyTheme(theme, announceChange = true) {
         document.body.classList.remove('theme-auto', 'theme-light', 'theme-dark');
         document.body.classList.add(`theme-${theme}`);
-        localStorage.setItem('dorar_theme', theme);
+        appSettings.theme = theme;
+        saveAllSettings();
         if (announceChange) {
             const themeNames = { 'auto': 'تلقائي', 'light': 'فاتح', 'dark': 'داكن' };
             announce(`تم تغيير المظهر إلى الوضع ال${themeNames[theme]}`);
@@ -95,7 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyFontSize(size, announceChange = true) {
         document.body.classList.remove('font-size-sm', 'font-size-md', 'font-size-lg', 'font-size-xl');
         document.body.classList.add(`font-size-${size}`);
-        localStorage.setItem('dorar_fontsize', size);
+        appSettings.fontsize = size;
+        saveAllSettings();
         if (announceChange) {
             const sizeNames = { 'sm': 'صغير', 'md': 'متوسط', 'lg': 'كبير', 'xl': 'كبير جداً' };
             announce(`تم تغيير حجم الخط إلى ${sizeNames[size]}`);
@@ -196,10 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function saveToHistory(query) {
-        searchHistory = searchHistory.filter(q => q !== query);
-        searchHistory.unshift(query);
-        if (searchHistory.length > 10) searchHistory.pop();
-        localStorage.setItem('dorar_history', JSON.stringify(searchHistory));
+            if (!searchHistory.includes(query)) {
+                searchHistory.unshift(query);
+                if (searchHistory.length > 5) searchHistory.pop();
+                appSettings.history = searchHistory;
+                saveAllSettings();
+                renderSearchHistory();
+            }
     }
 
     function renderSearchHistory() {
@@ -280,11 +354,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnFav.querySelector('svg').setAttribute('fill', 'none');
             } else {
                 favorites.push({ hadithHtml, infoHtml, originalHtml, plainText });
+                appSettings.favorites = favorites;
+                saveAllSettings();
                 btnFav.classList.add('favorite-active');
                 btnFav.querySelector('svg').setAttribute('fill', 'currentColor');
                 showToast("تمت الإضافة للمفضلة");
             }
-            localStorage.setItem('dorar_favorites', JSON.stringify(favorites));
             if (!viewFavorites.classList.contains('hidden')) renderFavorites();
         });
 
@@ -532,9 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setupNotifications() {
         if (!toggleNotif) return;
-        const notifSettings = JSON.parse(localStorage.getItem('dorar_notif_settings')) || {
-            enabled: false, interval: 60, category: 'عشوائي'
-        };
+        const notifSettings = appSettings.notif;
 
         toggleNotif.value = notifSettings.enabled ? 'on' : 'off';
         intervalSelectNotif.value = notifSettings.interval;
@@ -559,13 +632,16 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const btnTestNotif = document.getElementById('btn-test-notif');
         if (btnTestNotif) {
-            btnTestNotif.addEventListener('click', (e) => {
+            // Remove existing listeners to avoid duplicates if setup is called multiple times
+            const newBtn = btnTestNotif.cloneNode(true);
+            btnTestNotif.parentNode.replaceChild(newBtn, btnTestNotif);
+            newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                btnTestNotif.textContent = 'جاري جلب الفائدة...';
-                btnTestNotif.disabled = true;
+                newBtn.textContent = 'جاري جلب الفائدة...';
+                newBtn.disabled = true;
                 triggerNotification(true).finally(() => {
-                    btnTestNotif.textContent = 'جرب الإشعار الآن';
-                    btnTestNotif.disabled = false;
+                    newBtn.textContent = 'جرب الإشعار الآن';
+                    newBtn.disabled = false;
                 });
             });
         }
@@ -574,18 +650,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveNotifSettings() {
-        const settings = {
+        appSettings.notif = {
             enabled: toggleNotif.value === 'on',
             interval: parseInt(intervalSelectNotif.value),
             category: categorySelectNotif.value
         };
-        localStorage.setItem('dorar_notif_settings', JSON.stringify(settings));
+        saveAllSettings();
         startNotificationTimer();
     }
 
     function startNotificationTimer() {
         if (notifTimer) clearInterval(notifTimer);
-        const settings = JSON.parse(localStorage.getItem('dorar_notif_settings'));
+        const settings = appSettings.notif;
         if (!settings || !settings.enabled) return;
         notifTimer = setInterval(triggerNotification, settings.interval * 60 * 1000);
     }
@@ -593,7 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function triggerNotification(force = false) {
         if (!force && Notification.permission !== 'granted') return;
         
-        const settings = JSON.parse(localStorage.getItem('dorar_notif_settings'));
+        const settings = appSettings.notif;
         if (!force && (!settings || !settings.enabled)) return;
 
         // Use the current select values if forcing (testing), otherwise from settings
@@ -633,30 +709,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     const title = "الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'فائدة عشوائية' : cat);
                     const body = `${randomHadith.text}\n\nالراوي: ${randomHadith.rawi}\nالمحدث: ${randomHadith.muhaddith}\nخلاصة: ${randomHadith.degree}`;
                     
+                    // Show in-app toast
+                    showInAppNotification(title, body);
+
+                    // Show native notification
                     if (window.electronAPI && window.electronAPI.showNotification) {
                         window.electronAPI.showNotification({ title: title, body: body });
                     } else {
                         new Notification(title, { body: body });
                     }
                 } else if (force) {
-                    if (window.electronAPI && window.electronAPI.showNotification) {
-                        window.electronAPI.showNotification({ title: "تجربة الإشعار", body: "لم يتم العثور على حديث صحيح لهذه الفئة في هذه المحاولة." });
-                    }
+                    showInAppNotification("تجربة الإشعار", "لم يتم العثور على حديث صحيح لهذه الفئة في هذه المحاولة.");
                 }
             } else if (force) {
-                if (window.electronAPI && window.electronAPI.showNotification) {
-                    window.electronAPI.showNotification({ title: "خطأ", body: "لم نتمكن من جلب البيانات من الخادم." });
-                }
+                showInAppNotification("خطأ", "لم نتمكن من جلب البيانات من الخادم.");
             }
         } catch (err) {
             if (window.electronAPI && window.electronAPI.logError) {
                 window.electronAPI.logError(`Notification error: ${err}`);
             }
-            if (force && window.electronAPI && window.electronAPI.showNotification) {
-                window.electronAPI.showNotification({ title: "خطأ", body: "حدث خطأ أثناء الاتصال بالإنترنت أو الخادم." });
+            if (force) {
+                showInAppNotification("خطأ", "حدث خطأ أثناء الاتصال بالإنترنت أو الخادم.");
             }
         }
     }
     
-    setupNotifications();
+    // Start by loading settings
+    loadAllSettings();
 });

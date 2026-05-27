@@ -72,6 +72,29 @@ ipcMain.on('show-notification', (event, options) => {
   }
 });
 
+ipcMain.handle('get-settings', async () => {
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'dorar_settings.json');
+    if (fs.existsSync(settingsPath)) {
+      return fs.readFileSync(settingsPath, 'utf8');
+    }
+  } catch(e) {
+    console.error(e);
+  }
+  return null;
+});
+
+ipcMain.handle('save-settings', async (event, settingsStr) => {
+  try {
+    const settingsPath = path.join(app.getPath('userData'), 'dorar_settings.json');
+    fs.writeFileSync(settingsPath, settingsStr, 'utf8');
+    return true;
+  } catch(e) {
+    console.error(e);
+    return false;
+  }
+});
+
 app.whenReady().then(() => {
   if (process.platform === 'win32') {
     app.setAppUserModelId("com.dorar.hadith");
