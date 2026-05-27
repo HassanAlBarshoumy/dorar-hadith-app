@@ -53,21 +53,43 @@ def resource_path(relative_path):
 
 class Api:
     def search(self, query):
-        url = "https://dorar.net/dorar_api.json?skey=" + urllib.parse.quote(query)
+        import ssl
+        context = ssl._create_unverified_context()
+        
+        target_url = "https://dorar.net/dorar_api.json?skey=" + urllib.parse.quote(query)
         req = urllib.request.Request(
-            url, 
+            target_url, 
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
         )
+        
         try:
-            import ssl
-            context = ssl._create_unverified_context()
-            with urllib.request.urlopen(req, timeout=10, context=context) as response:
+            with urllib.request.urlopen(req, timeout=8, context=context) as response:
                 return response.read().decode('utf-8')
-        except Exception as e:
-            log_path = os.path.join(os.getenv('APPDATA'), 'error_log.txt')
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f"Search Error: {str(e)}\n")
-            return None
+        except Exception as e1:
+            # Fallback to allorigins proxy if Cloudflare blocks or network fails
+            try:
+                import json
+                proxy_url = "https://api.allorigins.win/get?url=" + urllib.parse.quote(target_url)
+                proxy_req = urllib.request.Request(
+                    proxy_url,
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                )
+                with urllib.request.urlopen(proxy_req, timeout=10, context=context) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    if data and 'contents' in data:
+                        return data['contents']
+                    return None
+            except Exception as e2:
+                log_path = os.path.join(os.getenv('APPDATA'), 'error_log.txt')
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"Search Error: Direct: {str(e1)}, Proxy: {str(e2)}\n")
+                return None
+
+    def log_error(self, msg):
+        log_path = os.path.join(os.getenv('APPDATA'), 'js_error_log.txt')
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f"JS Error: {str(msg)}\n")
+        return True
 
     def get_settings(self):
         settings_path = os.path.join(os.getenv('APPDATA'), 'dorar_settings.json')

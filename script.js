@@ -569,6 +569,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
                         return;
                     }
+                    // Try Python API first
+                    if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                        try {
+                            console.log("Trying Python api.search...");
+                            const rawResponse = await window.pywebview.api.search(query);
+                            if (rawResponse) {
+                                dorarData = JSON.parse(rawResponse);
+                                console.log("Python api.search succeeded.");
+                            } else {
+                                console.log("Python api.search returned null or empty.");
+                            }
+                        } catch (e) {
+                            console.error("Pywebview API search failed", e);
+                        }
+                    } 
+
+                    // Fallback to Capacitor HTTP
                     if (!dorarData && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
                         try {
                             const options = {
@@ -621,6 +638,10 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingIndicator.classList.add('hidden');
             resultsContainer.innerHTML = `<div class="error-message" role="alert">عذراً، حدث خطأ أثناء جلب البيانات. تأكد من الاتصال بالإنترنت.</div>`;
             announce("حدث خطأ أثناء البحث. يرجى التحقق من اتصالك بالإنترنت.");
+            
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
+                window.pywebview.api.log_error(err.toString() + " | Stack: " + (err.stack || "No stack"));
+            }
         }
     });
 
@@ -766,7 +787,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Fallback to Internet
             if (!data) {
-                data = await fetchDorarJSONP(keyword);
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                    try {
+                        const rawResponse = await window.pywebview.api.search(keyword);
+                        if (rawResponse) data = JSON.parse(rawResponse);
+                    } catch (e) {}
+                }
+                
+                if (!data) {
+                    data = await fetchDorarJSONP(keyword);
+                }
                 
                 // 3. Save to Cache
                 if (data && window.pywebview && window.pywebview.api && window.pywebview.api.save_to_cache) {
