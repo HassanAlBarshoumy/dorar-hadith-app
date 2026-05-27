@@ -105,15 +105,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Persistent Storage Logic ---
     async function loadAllSettings() {
         try {
+            let settingsStr = null;
             if (window.electronAPI && window.electronAPI.getSettings) {
-                const settingsStr = await window.electronAPI.getSettings();
-                if (settingsStr) {
-                    appSettings = { ...appSettings, ...JSON.parse(settingsStr) };
-                } else {
-                    loadFromLocalStorage(); // Fallback if file doesn't exist
-                }
+                settingsStr = await window.electronAPI.getSettings();
+            } else if (window.pywebview && window.pywebview.api && window.pywebview.api.get_settings) {
+                settingsStr = await window.pywebview.api.get_settings();
+            }
+            
+            if (settingsStr) {
+                appSettings = { ...appSettings, ...JSON.parse(settingsStr) };
             } else {
-                loadFromLocalStorage();
+                loadFromLocalStorage(); // Fallback if file doesn't exist
             }
         } catch (e) {
             loadFromLocalStorage();
@@ -138,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         appSettings.notif = JSON.parse(localStorage.getItem('dorar_notif_settings')) || appSettings.notif;
     }
 
-    function saveAllSettings() {
+    async function saveAllSettings() {
         // Always save to localStorage as a fallback
         localStorage.setItem('dorar_theme', appSettings.theme);
         localStorage.setItem('dorar_fontsize', appSettings.fontsize);
@@ -148,6 +150,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (window.electronAPI && window.electronAPI.saveSettings) {
             window.electronAPI.saveSettings(JSON.stringify(appSettings));
+        } else if (window.pywebview && window.pywebview.api && window.pywebview.api.save_settings) {
+            window.pywebview.api.save_settings(JSON.stringify(appSettings));
         }
     }
 
@@ -690,6 +694,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.electronAPI) {
                 const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`;
                 const response = await window.electronAPI.fetchDorar(targetUrl);
+                data = JSON.parse(response);
+            } else if (window.pywebview && window.pywebview.api) {
+                const response = await window.pywebview.api.search(keyword);
+                if (!response) throw new Error("Python API returned empty");
                 data = JSON.parse(response);
             } else {
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`)}`;

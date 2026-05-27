@@ -1,4 +1,4 @@
-('C:\\Users\\d\\.gemini\\antigravity\\brain\\062aece4-7891-4c1a-bda0-489d783e61ea\\dorar-app\\build\\DorarHadithApp\\PYZ-00.pyz',
+('C:\\Users\\d\\dorar-hadith-app\\build\\DorarHadithApp\\PYZ-00.pyz',
  [('__future__',
    'C:\\Users\\d\\AppData\\Local\\Programs\\Python\\Python314\\Lib\\__future__.py',
    'PYMODULE'),

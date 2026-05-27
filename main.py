@@ -20,10 +20,29 @@ class Api:
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
         )
         try:
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 return response.read().decode('utf-8')
         except Exception as e:
             return None
+
+    def get_settings(self):
+        settings_path = os.path.join(os.getenv('APPDATA'), 'dorar_settings.json')
+        if os.path.exists(settings_path):
+            try:
+                with open(settings_path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception:
+                pass
+        return None
+
+    def save_settings(self, settings_str):
+        settings_path = os.path.join(os.getenv('APPDATA'), 'dorar_settings.json')
+        try:
+            with open(settings_path, 'w', encoding='utf-8') as f:
+                f.write(settings_str)
+            return True
+        except Exception:
+            return False
 
 if __name__ == '__main__':
     api = Api()
