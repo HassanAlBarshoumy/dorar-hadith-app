@@ -677,3 +677,158 @@ body.theme-dark .sticky-header,
     background-color: var(--primary-color);
     color: white;
 }
+
+/* Search Source Selector Default */
+.search-source-selector {
+    margin-bottom: 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    font-weight: bold;
+    color: var(--text-main);
+    justify-content: center;
+}
+.search-source-selector label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ==========================================================================
+   Responsive Design (Tablets & Mobiles)
+   ========================================================================== */
+
+/* Tablets (Max 768px) */
+@media (max-width: 768px) {
+    .app-container {
+        padding: 0.5rem;
+    }
+    
+    #app-title {
+        font-size: 1.8rem;
+    }
+    
+    .hadith-card {
+        padding: 1rem;
+    }
+    
+    .filter-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .input-group {
+        flex-direction: column;
+        border-radius: var(--radius-lg);
+    }
+    
+    #search-input {
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+        text-align: center;
+        padding: 1rem;
+    }
+    
+    #search-button {
+        border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+        width: 100%;
+        padding: 1rem;
+        justify-content: center;
+    }
+}
+
+/* Mobile Devices (Max 600px) */
+@media (max-width: 600px) {
+    .app-container {
+        padding-bottom: 5rem; /* space for bottom nav */
+    }
+    
+    /* Convert top-nav to a Bottom Tab Bar */
+    .top-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--surface-color);
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+        margin: 0;
+        padding: 0.5rem 1rem;
+        justify-content: space-around;
+        z-index: 1000;
+        border-top: 1px solid var(--border-color);
+        border-radius: 1.5rem 1.5rem 0 0;
+    }
+    
+    .nav-btn {
+        width: 50px;
+        height: 50px;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+    }
+    
+    .nav-btn.active {
+        background: rgba(43, 109, 99, 0.15);
+        color: var(--primary-color);
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        body.theme-auto .top-nav {
+            background-color: #1e293b;
+        }
+        body.theme-auto .nav-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    }
+    
+    body.theme-dark .top-nav {
+        background-color: #1e293b;
+    }
+    body.theme-dark .nav-btn.active {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    #app-title {
+        font-size: 1.5rem;
+        margin-top: 1rem;
+    }
+    
+    .header p {
+        font-size: 0.9rem;
+    }
+    
+    .hadith-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .card-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .card-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 2rem auto;
+        padding: 1.5rem;
+    }
+    
+    .back-to-top {
+        bottom: 5.5rem; /* above bottom nav */
+        right: 1rem;
+        width: 45px;
+        height: 45px;
+    }
+    
+    .search-source-selector {
+        flex-direction: column;
+        align-items: center;
+    }
+}
