@@ -103,7 +103,30 @@ class Api:
             with open(settings_path, 'w', encoding='utf-8') as f:
                 f.write(settings_str)
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Error saving settings: {e}")
+            return False
+
+    def show_notification(self, title, body):
+        import subprocess
+        # Escape quotes for powershell
+        title = title.replace("'", "''").replace('"', '')
+        body = body.replace("'", "''").replace('"', '')
+        ps_script = f'''
+[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+$template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
+$textNodes = $template.GetElementsByTagName('text')
+$textNodes.Item(0).AppendChild($template.CreateTextNode('{title}')) | Out-Null
+$textNodes.Item(1).AppendChild($template.CreateTextNode('{body}')) | Out-Null
+$toast = [Windows.UI.Notifications.ToastNotification]::new($template)
+$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('الموسوعة الحديثية')
+$notifier.Show($toast)
+'''
+        try:
+            subprocess.Popen(['powershell', '-Command', ps_script], creationflags=subprocess.CREATE_NO_WINDOW)
+            return True
+        except Exception as e:
+            print(f"Error showing notification: {e}")
             return False
 
     def save_to_cache(self, query, data_json):

@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
         plainText += infoStr;
 
         // Check favorite status
-        const isFav = favorites.some(f => f.plainText === plainText);
+        const isFav = favorites.some(f => f.hadithHtml === hadithHtml);
 
         const header = document.createElement('div');
         header.className = 'hadith-card-header';
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnFav.title = "المفضلة";
         btnFav.addEventListener('click', () => {
             if (btnFav.classList.contains('favorite-active')) {
-                favorites = favorites.filter(f => f.plainText !== plainText);
+                favorites = favorites.filter(f => f.hadithHtml !== hadithHtml);
                 appSettings.favorites = favorites;
                 saveAllSettings();
                 btnFav.classList.remove('favorite-active');
@@ -1000,6 +1000,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (window.electronAPI && window.electronAPI.showNotification) {
                         window.electronAPI.showNotification({ title: title, body: body });
+                    } else if (window.pywebview && window.pywebview.api && window.pywebview.api.show_notification) {
+                        window.pywebview.api.show_notification(title, body);
                     } else {
                         new Notification(title, { body: body });
                     }
