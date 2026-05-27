@@ -1,2 +1,0 @@
-Fetch error: Failed to fetch
-JSONP Request failed onerror
