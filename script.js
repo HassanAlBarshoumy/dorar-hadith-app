@@ -691,18 +691,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             dorarData = JSON.parse(response.data);
                         } catch (e) {
                             try {
-                                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}&page=${page}`)}`;
+                                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}&page=${page}`)}`;
                                 const proxyResponse = await window.Capacitor.Plugins.CapacitorHttp.get({ url: proxyUrl });
-                                const proxyData = JSON.parse(proxyResponse.data);
-                                if (proxyData && proxyData.contents) {
-                                    dorarData = JSON.parse(proxyData.contents);
-                                }
+                                dorarData = JSON.parse(proxyResponse.data);
                             } catch (proxyError) { }
                         }
                     }
                     
                     if (!dorarData) {
-                        dorarData = await fetchDorarJSONP(query, page);
+                        try {
+                            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}&page=${page}`)}`;
+                            const response = await fetch(proxyUrl);
+                            dorarData = await response.json();
+                        } catch (e) {
+                            // If corsproxy fails, try JSONP as last resort
+                            dorarData = await fetchDorarJSONP(query, page);
+                        }
                     }
 
                     // 3. Save page 1 to Local Cache

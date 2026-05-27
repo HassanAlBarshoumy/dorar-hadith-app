@@ -66,19 +66,15 @@ class Api:
             with urllib.request.urlopen(req, timeout=8, context=context) as response:
                 return response.read().decode('utf-8')
         except Exception as e1:
-            # Fallback to allorigins proxy if Cloudflare blocks or network fails
+            # Fallback proxy if Cloudflare blocks or network fails
             try:
-                import json
-                proxy_url = "https://api.allorigins.win/get?url=" + urllib.parse.quote(target_url)
+                proxy_url = "https://corsproxy.io/?" + urllib.parse.quote(target_url)
                 proxy_req = urllib.request.Request(
                     proxy_url,
                     headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                 )
                 with urllib.request.urlopen(proxy_req, timeout=10, context=context) as response:
-                    data = json.loads(response.read().decode('utf-8'))
-                    if data and 'contents' in data:
-                        return data['contents']
-                    return None
+                    return response.read().decode('utf-8')
             except Exception as e2:
                 log_path = os.path.join(os.getenv('APPDATA'), 'error_log.txt')
                 with open(log_path, 'a', encoding='utf-8') as f:
