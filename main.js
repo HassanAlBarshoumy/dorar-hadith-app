@@ -20,6 +20,51 @@ function createWindow() {
 }
 
 // Secure IPC Fetch Handler to bypass CORS on behalf of the renderer
+let db = null;
+ipcMain.handle('search-local-db', async (event, query) => {
+  try {
+    if (!db) {
+      const initSqlJs = require('sql.js');
+      const SQL = await initSqlJs();
+      // In production, the DB should be inside the resources folder
+      const dbPath = app.isPackaged 
+        ? path.join(process.resourcesPath, 'local_hadith.db')
+        : path.join(__dirname, 'local_hadith.db');
+        
+      if (fs.existsSync(dbPath)) {
+        const filebuffer = fs.readFileSync(dbPath);
+        db = new SQL.Database(filebuffer);
+      } else {
+        throw new Error('Database file not found: ' + dbPath);
+      }
+    }
+
+    const stmt = db.prepare(`
+      SELECT book, text_ar, authenticity FROM ahadith 
+      WHERE text_ar LIKE ? 
+      LIMIT 50
+    `);
+    stmt.bind(['%' + query + '%']);
+    
+    const rows = [];
+    while (stmt.step()) {
+        const row = stmt.getAsObject();
+        rows.push({
+            book: row.book,
+            text: row.text_ar,
+            authenticity: row.authenticity
+        });
+    }
+    stmt.free();
+    
+    return JSON.stringify(rows);
+  } catch (err) {
+    const logPath = path.join(app.getPath('userData'), 'error_log.txt');
+    fs.appendFileSync(logPath, `DB Search Error: ${err.message}\n`);
+    return JSON.stringify([]);
+  }
+});
+
 ipcMain.handle('fetch-dorar', async (event, url) => {
   try {
     const controller = new AbortController();

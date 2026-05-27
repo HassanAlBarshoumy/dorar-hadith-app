@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     logError: (msg) => ipcRenderer.send('log-error', msg),
     showNotification: (options) => ipcRenderer.send('show-notification', options),
     getSettings: () => ipcRenderer.invoke('get-settings'),
-    saveSettings: (settingsStr) => ipcRenderer.invoke('save-settings', settingsStr)
+    saveSettings: (settingsStr) => ipcRenderer.invoke('save-settings', settingsStr),
+    searchLocalDb: (query) => ipcRenderer.invoke('search-local-db', query)
 });

@@ -3,11 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('error', (event) => {
         if (window.electronAPI && window.electronAPI.logError) {
             window.electronAPI.logError(`Error: ${event.message} at ${event.filename}:${event.lineno}`);
+        } else if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
+            window.pywebview.api.log_error(`Error: ${event.message} at ${event.filename}:${event.lineno}`);
         }
     });
     window.addEventListener('unhandledrejection', (event) => {
         if (window.electronAPI && window.electronAPI.logError) {
             window.electronAPI.logError(`Unhandled Promise Rejection: ${event.reason}`);
+        } else if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
+            window.pywebview.api.log_error(`Unhandled Promise Rejection: ${event.reason}`);
         }
     });
 
@@ -534,7 +538,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (searchSource === 'local_9books') {
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
+                if (window.electronAPI && window.electronAPI.searchLocalDb) {
+                    const localDataStr = await window.electronAPI.searchLocalDb(query);
+                    const localData = JSON.parse(localDataStr);
+                    
+                    currentResults = localData.map(item => ({
+                        hadithHtml: `<div class="hadith">${item.text}</div>`,
+                        infoHtml: `<div class="hadith-info">
+                            <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
+                            <span class="info-item"><span class="info-label">خلاصة الحكم:</span> ${item.authenticity}</span>
+                        </div>`,
+                        originalHtml: ""
+                    }));
+                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
                     const localDataStr = await window.pywebview.api.search_local_hadith(query);
                     const localData = JSON.parse(localDataStr);
                     
@@ -569,8 +585,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
                         return;
                     }
-                    // Try Python API first
-                    if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                    // Try Electron API first
+                    if (window.electronAPI && window.electronAPI.fetchDorar) {
+                        try {
+                            const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`);
+                            dorarData = JSON.parse(rawResponse);
+                        } catch (e) {
+                            console.error("Electron API search failed", e);
+                        }
+                    } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
                         try {
                             console.log("Trying Python api.search...");
                             const rawResponse = await window.pywebview.api.search(query);
@@ -649,7 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsContainer.innerHTML = `<div class="error-message" role="alert">عذراً، حدث خطأ أثناء جلب البيانات. تأكد من الاتصال بالإنترنت.</div>`;
             announce("حدث خطأ أثناء البحث. يرجى التحقق من اتصالك بالإنترنت.");
             
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
+            if (window.electronAPI && window.electronAPI.logError) {
+                window.electronAPI.logError(err.toString() + " | Stack: " + (err.stack || "No stack"));
+            } else if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
                 window.pywebview.api.log_error(err.toString() + " | Stack: " + (err.stack || "No stack"));
             }
         }
@@ -797,7 +822,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Fallback to Internet
             if (!data) {
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
+                if (window.electronAPI && window.electronAPI.fetchDorar) {
+                    try {
+                        const rawResponse = await window.electronAPI.fetchDorar(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`);
+                        if (rawResponse) data = JSON.parse(rawResponse);
+                    } catch (e) {}
+                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search) {
                     try {
                         const rawResponse = await window.pywebview.api.search(keyword);
                         if (rawResponse) data = JSON.parse(rawResponse);
