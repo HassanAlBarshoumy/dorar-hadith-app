@@ -49,6 +49,11 @@ jobs:
     - name: Install Dependencies
       run: npm install
 
+    - name: Prepare Web Assets
+      run: |
+        mkdir www
+        cp index.html style.css script.js manifest.json sw.js www/
+
     - name: Sync Capacitor Android
       run: |
         npx cap add android || true
