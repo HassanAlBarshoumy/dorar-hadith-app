@@ -453,8 +453,6 @@ document.addEventListener('DOMContentLoaded', () => {
         header.appendChild(btnShare);
         header.appendChild(btnFav);
         
-        card.appendChild(header);
-
         // Process visual HTML (Badges)
         const contentId = `hadith-content-${Date.now()}-${index}`;
         const contentWrapper = document.createElement('div');
@@ -463,6 +461,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let enhancedInfoHtml = infoHtml || '';
         contentWrapper.innerHTML = hadithHtml + enhancedInfoHtml;
         card.appendChild(contentWrapper);
+        
+        // Append action buttons at the bottom
+        card.appendChild(header);
         
         card.setAttribute('aria-labelledby', contentId);
 

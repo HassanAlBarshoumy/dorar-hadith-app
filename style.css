@@ -307,31 +307,38 @@ a {
 
 .hadith-card {
     background-color: var(--surface-color);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm);
-    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    padding: 2rem;
     border: 1px solid var(--border-color);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-top: 4px solid var(--primary-light);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     animation: fadeIn 0.4s ease-out;
     position: relative;
+    animation-fill-mode: both;
 }
-.hadith-card:hover { box-shadow: var(--shadow-md); }
+.hadith-card:hover { 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); 
+    transform: translateY(-2px);
+}
 
 .hadith-card-header {
     display: flex;
     justify-content: flex-end;
-    gap: 0.5rem;
-    margin-bottom: -1rem;
+    gap: 0.8rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border-color);
     position: relative;
     z-index: 2;
 }
 
 .card-action-btn {
-    background: var(--bg-color);
-    border: 1px solid var(--border-color);
+    background: var(--surface-hover);
+    border: none;
     color: var(--text-muted);
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: var(--radius-full);
     display: flex;
     align-items: center;
@@ -341,29 +348,29 @@ a {
 }
 .card-action-btn:hover {
     color: var(--primary-color);
-    border-color: var(--primary-color);
+    background: rgba(28, 75, 68, 0.1);
+    transform: scale(1.05);
 }
 .card-action-btn.favorite-active {
     color: var(--accent-color);
-    border-color: var(--accent-color);
-    background: rgba(212, 175, 55, 0.1);
+    background: rgba(212, 175, 55, 0.15);
 }
 
 /* Original Dorar elements */
 .hadith {
-    font-size: 1.25em;
-    line-height: 1.8;
+    font-size: 1.35em;
+    line-height: 2.1;
     color: var(--text-main);
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.5rem;
     font-weight: 500;
-    padding-top: 1rem;
 }
 
 .search-keys {
     color: #e53e3e;
-    background-color: rgba(229, 62, 62, 0.1);
-    padding: 0 4px;
-    border-radius: 4px;
+    background-color: rgba(229, 62, 62, 0.08);
+    padding: 0 6px;
+    border-radius: 6px;
+    font-weight: 700;
 }
 body.theme-dark .search-keys,
 @media (prefers-color-scheme: dark) {
@@ -373,22 +380,7 @@ body.theme-dark .search-keys,
     }
 }
 
-.hadith-info {
-    font-size: 0.95em;
-    color: var(--text-muted);
-    background-color: var(--surface-hover);
-    padding: 1rem;
-    border-radius: 8px;
-    border-right: 4px solid var(--primary-light);
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.info-subtitle {
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-left: 0.5rem;
-}
+/* We override the existing hadith-info lower down so we can remove this block here or leave it empty */
 
 /* ==========================================================================
    Modals & Extras
@@ -488,31 +480,41 @@ body.theme-dark .search-keys,
 
 /* Badge styling for hadith-info */
 .hadith-info {
-    /* Reset from previous */
     display: flex;
-    flex-direction: row;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.8rem;
     align-items: center;
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    margin-top: 1.5rem;
 }
 
 .info-item {
     display: inline-flex;
-    align-items: baseline;
-    background-color: var(--surface-color);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 0.25rem 0.5rem;
-    font-size: 0.9em;
-    box-shadow: var(--shadow-sm);
+    align-items: center;
+    background-color: var(--surface-hover);
+    border: 1px solid rgba(0,0,0,0.03);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.8rem;
+    font-size: 0.95em;
+    box-shadow: none;
+    gap: 0.4rem;
+}
+
+body.theme-dark .info-item,
+@media (prefers-color-scheme: dark) {
+    body.theme-auto .info-item {
+        background-color: rgba(255,255,255,0.03);
+        border-color: rgba(255,255,255,0.05);
+    }
 }
 
 .info-subtitle {
     font-weight: 700;
-    color: var(--primary-color);
-    margin-left: 0.4rem;
-    font-size: 0.85em;
-    text-transform: uppercase;
+    color: var(--primary-light);
+    margin-left: 0;
+    font-size: 0.9em;
 }
 
 .info-value {
