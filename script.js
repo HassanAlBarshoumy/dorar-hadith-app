@@ -472,6 +472,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let isFetching = false;
 
+    
+    // Infinite Scroll Implementation
+    const scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && btnLoadMore && !btnLoadMore.classList.contains('hidden') && !btnLoadMore.disabled && !isFetching && hasMorePages) {
+                btnLoadMore.click();
+            }
+        });
+    }, { rootMargin: '200px' });
+    if (btnLoadMore) scrollObserver.observe(btnLoadMore);
+
     btnLoadMore.addEventListener('click', async () => {
         // If we still have rendered results to show, just render them
         let filtered = currentResults;
@@ -617,31 +628,32 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let newResults = [];
             
-            if (searchSource === 'local_9books') {
+                        if (searchSource === 'local_9books') {
                 if (window.electronAPI && window.electronAPI.searchLocalDb) {
-                    const localDataStr = await window.electronAPI.searchLocalDb(query);
+                    const localDataStr = await window.electronAPI.searchLocalDb(query, page);
                     const localData = JSON.parse(localDataStr);
                     newResults = localData.map(item => ({
                         hadithHtml: `<div class="hadith">${item.text}</div>`,
                         infoHtml: `<div class="hadith-info">
-                            <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
-                            <span class="info-item"><span class="info-label">خلاصة الحكم:</span> ${item.authenticity}</span>
+                            <span class="info-item"><span class="info-subtitle">المصدر:</span> <span class="info-value">${item.book}</span></span>
+                            <span class="info-item"><span class="info-subtitle">خلاصة الحكم:</span> <span class="info-value">${item.authenticity}</span></span>
                         </div>`,
                         originalHtml: ""
                     }));
                 } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
-                    const localDataStr = await window.pywebview.api.search_local_hadith(query);
+                    const localDataStr = await window.pywebview.api.search_local_hadith(query, page);
                     const localData = JSON.parse(localDataStr);
                     newResults = localData.map(item => ({
-                        hadithHtml: `<div class="hadith">${item.text}</div>`,
+                        hadithHtml: `<div class="hadith">${item.text_ar}</div>`,
                         infoHtml: `<div class="hadith-info">
-                            <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
-                            <span class="info-item"><span class="info-label">خلاصة الحكم:</span> ${item.authenticity}</span>
+                            <span class="info-item"><span class="info-subtitle">المصدر:</span> <span class="info-value">${item.book}</span></span>
+                            <span class="info-item"><span class="info-subtitle">خلاصة الحكم:</span> <span class="info-value">${item.authenticity}</span></span>
                         </div>`,
                         originalHtml: ""
                     }));
                 }
-                hasMorePages = false; // Local DB search doesn't paginate yet
+                if (newResults.length < 20) hasMorePages = false;
+                else hasMorePages = true;
             } else {
                 let dorarData = null;
 

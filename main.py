@@ -135,7 +135,7 @@ class Api:
         except Exception as e:
             return None
 
-    def search_local_hadith(self, query):
+    def search_local_hadith(self, query, page=1):
         try:
             db_path = resource_path('local_hadith.db')
             if not os.path.exists(db_path):
@@ -145,11 +145,13 @@ class Api:
             db_uri = 'file:' + urllib.request.pathname2url(os.path.abspath(db_path)) + '?mode=ro'
             conn = sqlite3.connect(db_uri, uri=True)
             cursor = conn.cursor()
+            page = int(page)
+            offset = (page - 1) * 20
             cursor.execute('''
                 SELECT book, text_ar, authenticity FROM ahadith 
                 WHERE text_ar LIKE ? 
-                LIMIT 50
-            ''', ('%' + query + '%',))
+                LIMIT 20 OFFSET ?
+            ''', ('%' + query + '%', offset))
             
             rows = cursor.fetchall()
             conn.close()
