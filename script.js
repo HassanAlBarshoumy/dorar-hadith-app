@@ -538,43 +538,34 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let dorarData;
 
-            if (window.pywebview && window.pywebview.api) {
-                // Desktop Native (Python)
-                const result = await window.pywebview.api.search(query);
-                if (!result) throw new Error("Python API returned empty");
-                dorarData = JSON.parse(result);
-            } else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
-                // Mobile Native (Capacitor Http Plugin)
-                const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
-                const response = await window.Capacitor.Plugins.CapacitorHttp.get({ url: targetUrl });
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+                // Mobile Native
+                const options = {
+                    url: `https://dorar.net/dorar_api.json`,
+                    params: { skey: query },
+                    headers: { 'User-Agent': 'DorarHadithApp Mobile' }
+                };
+                const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
                 dorarData = JSON.parse(response.data);
-            } else if (window.electronAPI) {
-                // Desktop Native (Electron Secure IPC)
-                const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
-                const response = await window.electronAPI.fetchDorar(targetUrl);
-                dorarData = JSON.parse(response);
             } else {
-                // Web Fallback (CORS Proxy)
-                const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(query)}`;
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                dorarData = JSON.parse(data.contents);
+                // Use JSONP for both Electron, Web, and PyWebView!
+                dorarData = await fetchDorarJSONP(query);
             }
 
-            loadingIndicator.classList.add('hidden');
-            resultsSection.setAttribute('aria-busy', 'false');
+            if (!dorarData || !dorarData.ahadith || !dorarData.ahadith.result) {
+                resultsContainer.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج مطابقة، أو حدث خطأ في الخادم.</div>';
+            } else {
+                currentResults = processDorarHTML(dorarData.ahadith.result);
+                displayedCount = 0;
+                resultsContainer.innerHTML = '';
+                
+                // Show notification test button if we have results
+                containerNotif.style.display = 'block';
 
-            if (dorarData && dorarData.ahadith && dorarData.ahadith.result) {
-                const results = processDorarHTML(dorarData.ahadith.result);
-                if (results.length === 0) {
-                    resultsContainer.innerHTML = '<div class="empty-state" role="status">لم يتم العثور على نتائج.</div>';
-                    announce("لم يتم العثور على نتائج للبحث المطلوب.");
+                if (currentResults.length === 0) {
+                    resultsContainer.innerHTML = '<div class="empty-state">لا توجد أحاديث مطابقة لبحثك.</div>';
                 } else {
-                    currentResults = results;
                     renderResults(currentResults, resultsContainer);
-                    announce(`تم العثور على ${results.length} نتيجة. يمكنك استخدام مفتاح Tab للذهاب للنتائج، ثم الأسهم للتنقل بين الأحاديث.`);
                     
                     setTimeout(() => {
                         const firstCard = resultsContainer.querySelector('.hadith-card');
@@ -670,6 +661,39 @@ document.addEventListener('DOMContentLoaded', () => {
         notifTimer = setInterval(triggerNotification, settings.interval * 60 * 1000);
     }
 
+    // --- API Fetch via JSONP ---
+    function fetchDorarJSONP(keyword) {
+        return new Promise((resolve, reject) => {
+            const callbackName = 'dorar_cb_' + Math.round(100000 * Math.random());
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                if (script.parentNode) document.body.removeChild(script);
+                resolve(data);
+            };
+            
+            const script = document.createElement('script');
+            const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}&callback=${callbackName}`;
+            script.src = targetUrl;
+            
+            script.onerror = () => {
+                delete window[callbackName];
+                if (script.parentNode) document.body.removeChild(script);
+                reject(new Error("JSONP Request failed"));
+            };
+            
+            document.body.appendChild(script);
+
+            // Timeout after 15 seconds
+            setTimeout(() => {
+                if (window[callbackName]) {
+                    delete window[callbackName];
+                    if (script.parentNode) document.body.removeChild(script);
+                    reject(new Error("JSONP Request Timeout"));
+                }
+            }, 15000);
+        });
+    }
+
     async function triggerNotification(force = false) {
         if (!force && Notification.permission !== 'granted') return;
         
@@ -690,24 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            let data = null;
-            if (window.electronAPI) {
-                const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`;
-                const response = await window.electronAPI.fetchDorar(targetUrl);
-                data = JSON.parse(response);
-            } else if (window.pywebview && window.pywebview.api) {
-                const response = await window.pywebview.api.search(keyword);
-                if (!response) throw new Error("Python API returned empty");
-                data = JSON.parse(response);
-            } else {
-                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`)}`;
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                const res = await fetch(proxyUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                const json = await res.json();
-                data = JSON.parse(json.contents);
-            }
+            let data = await fetchDorarJSONP(keyword);
 
             if (data && data.ahadith && data.ahadith.result) {
                 const results = processDorarHTML(data.ahadith.result);

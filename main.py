@@ -20,9 +20,14 @@ class Api:
             headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
         )
         try:
-            with urllib.request.urlopen(req, timeout=10) as response:
+            import ssl
+            context = ssl._create_unverified_context()
+            with urllib.request.urlopen(req, timeout=10, context=context) as response:
                 return response.read().decode('utf-8')
         except Exception as e:
+            log_path = os.path.join(os.getenv('APPDATA'), 'error_log.txt')
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(f"Search Error: {str(e)}\n")
             return None
 
     def get_settings(self):
