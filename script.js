@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 btnTestNotif.textContent = 'جاري جلب الفائدة...';
                 btnTestNotif.disabled = true;
-                triggerNotification().finally(() => {
+                triggerNotification(true).finally(() => {
                     btnTestNotif.textContent = 'جرب الإشعار الآن';
                     btnTestNotif.disabled = false;
                 });
@@ -590,12 +590,14 @@ document.addEventListener('DOMContentLoaded', () => {
         notifTimer = setInterval(triggerNotification, settings.interval * 60 * 1000);
     }
 
-    async function triggerNotification() {
-        if (Notification.permission !== 'granted') return;
+    async function triggerNotification(force = false) {
+        if (!force && Notification.permission !== 'granted') return;
+        
         const settings = JSON.parse(localStorage.getItem('dorar_notif_settings'));
-        if (!settings || !settings.enabled) return;
+        if (!force && (!settings || !settings.enabled)) return;
 
-        const cat = settings.category;
+        // Use the current select values if forcing (testing), otherwise from settings
+        const cat = force ? categorySelectNotif.value : (settings ? settings.category : 'عشوائي');
         let keyword = '';
         if (cat === 'عشوائي') {
             const allKeys = Object.keys(categoryKeywords);
