@@ -1,5 +1,6 @@
 const { app, BrowserWindow, session, ipcMain, net } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -30,6 +31,16 @@ ipcMain.handle('fetch-dorar', async (event, url) => {
     return await response.text();
   } catch (err) {
     throw err;
+  }
+});
+
+ipcMain.on('log-error', (event, msg) => {
+  try {
+    const logPath = path.join(app.getPath('userData'), 'error_log.txt');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`);
+  } catch(e) {
+    console.error("Failed to write to error log:", e);
   }
 });
 

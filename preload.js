@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-    fetchDorar: (url) => ipcRenderer.invoke('fetch-dorar', url)
+    fetchDorar: (url) => ipcRenderer.invoke('fetch-dorar', url),
+    logError: (msg) => ipcRenderer.send('log-error', msg)
 });

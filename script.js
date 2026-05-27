@@ -1,7 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Global Error Logging ---
+    window.addEventListener('error', (event) => {
+        if (window.electronAPI && window.electronAPI.logError) {
+            window.electronAPI.logError(`Error: ${event.message} at ${event.filename}:${event.lineno}`);
+        }
+    });
+    window.addEventListener('unhandledrejection', (event) => {
+        if (window.electronAPI && window.electronAPI.logError) {
+            window.electronAPI.logError(`Unhandled Promise Rejection: ${event.reason}`);
+        }
+    });
+
     // --- Elements ---
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
+    const searchButton = document.getElementById('search-button');
     const resultsContainer = document.getElementById('results-container');
     const loadingIndicator = document.getElementById('loading-indicator');
     const resultsSection = document.getElementById('results-section');
