@@ -185,8 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
-    fontsizeSelect.addEventListener('change', (e) => applyFontSize(e.target.value));
+    themeSelect.addEventListener('change', (e) => {
+        if (tempSettings) tempSettings.theme = e.target.value;
+        applyTheme(e.target.value, false);
+    });
+    fontsizeSelect.addEventListener('change', (e) => {
+        if (tempSettings) tempSettings.fontsize = e.target.value;
+        applyFontSize(e.target.value, false);
+    });
 
     // --- Back to Top Logic ---
     window.addEventListener('scroll', () => {
@@ -225,17 +231,76 @@ document.addEventListener('DOMContentLoaded', () => {
         renderFavorites();
     });
 
+    let tempSettings = null;
+    const btnSaveSettings = document.getElementById('btn-save-settings');
+
     btnSettings.addEventListener('click', () => {
+        tempSettings = JSON.parse(JSON.stringify(appSettings));
+        themeSelect.value = tempSettings.theme;
+        fontsizeSelect.value = tempSettings.fontsize;
+        const notifToggle = document.getElementById('notif-toggle');
+        const notifInterval = document.getElementById('notif-interval');
+        const notifCategory = document.getElementById('notif-category');
+        if (notifToggle) notifToggle.value = tempSettings.notif.enabled ? 'on' : 'off';
+        if (notifInterval) notifInterval.value = tempSettings.notif.interval;
+        if (notifCategory) notifCategory.value = tempSettings.notif.category;
+        
         settingsModal.classList.remove('hidden');
         settingsModal.setAttribute('aria-hidden', 'false');
         // Set focus to the first focusable element or the close button
         setTimeout(() => btnCloseSettings.focus(), 50);
     });
-    btnCloseSettings.addEventListener('click', () => {
+    
+    function closeSettingsWithPrompt() {
+        if (!tempSettings) return;
+        
+        // Update tempSettings from notif inputs just in case they were changed
+        const notifToggle = document.getElementById('notif-toggle');
+        const notifInterval = document.getElementById('notif-interval');
+        const notifCategory = document.getElementById('notif-category');
+        if (notifToggle && notifInterval && notifCategory) {
+            tempSettings.notif.enabled = notifToggle.value === 'on';
+            tempSettings.notif.interval = parseInt(notifInterval.value);
+            tempSettings.notif.category = notifCategory.value;
+        }
+
+        if (JSON.stringify(tempSettings) !== JSON.stringify(appSettings)) {
+            if (confirm("يوجد تغييرات غير محفوظة، هل تريد حفظ الإعدادات قبل الخروج؟")) {
+                if (btnSaveSettings) btnSaveSettings.click();
+                return;
+            } else {
+                applyTheme(appSettings.theme, false);
+                applyFontSize(appSettings.fontsize, false);
+            }
+        }
         settingsModal.classList.add('hidden');
         settingsModal.setAttribute('aria-hidden', 'true');
         btnSettings.focus();
-    });
+    }
+    
+    if (btnSaveSettings) {
+        btnSaveSettings.addEventListener('click', () => {
+            if (!tempSettings) return;
+            const notifToggle = document.getElementById('notif-toggle');
+            const notifInterval = document.getElementById('notif-interval');
+            const notifCategory = document.getElementById('notif-category');
+            if (notifToggle && notifInterval && notifCategory) {
+                tempSettings.notif.enabled = notifToggle.value === 'on';
+                tempSettings.notif.interval = parseInt(notifInterval.value);
+                tempSettings.notif.category = notifCategory.value;
+            }
+            
+            appSettings = JSON.parse(JSON.stringify(tempSettings));
+            saveAllSettings();
+            showToast('تم حفظ الإعدادات بنجاح');
+            
+            settingsModal.classList.add('hidden');
+            settingsModal.setAttribute('aria-hidden', 'true');
+            btnSettings.focus();
+        });
+    }
+
+    btnCloseSettings.addEventListener('click', closeSettingsWithPrompt);
 
     // --- Keyboard Shortcuts ---
     document.addEventListener('keydown', (e) => {
@@ -250,9 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Esc to close modals/dropdowns
         if (e.key === 'Escape') {
             if (!settingsModal.classList.contains('hidden')) {
-                settingsModal.classList.add('hidden');
-                settingsModal.setAttribute('aria-hidden', 'true');
-                btnSettings.focus();
+                closeSettingsWithPrompt();
             }
             searchHistoryContainer.classList.add('hidden');
         }
@@ -516,12 +579,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let filtered = currentResults;
         if (currentFilter === 'authentic') {
             filtered = currentResults.filter(item => {
-                const info = (item.infoHtml || '').toLowerCase();
-                return !info.includes('ضعيف') && !info.includes('منكر') && !info.includes('موضوع') && !info.includes('باطل');
+                const info = (item.infoHtml || '');
+                return info.includes('صحيح') && !info.includes('غير صحيح') && !info.includes('ليس بصحيح');
+            });
+        } else if (currentFilter === 'hasan') {
+            filtered = currentResults.filter(item => {
+                const info = (item.infoHtml || '');
+                return info.includes('حسن') && !info.includes('ليس بحسن');
             });
         } else if (currentFilter === 'weak') {
             filtered = currentResults.filter(item => {
-                const info = (item.infoHtml || '').toLowerCase();
+                const info = (item.infoHtml || '');
                 return info.includes('ضعيف') || info.includes('منكر') || info.includes('موضوع') || info.includes('باطل');
             });
         }
@@ -554,12 +622,17 @@ document.addEventListener('DOMContentLoaded', () => {
         let filtered = items;
         if (currentFilter === 'authentic') {
             filtered = items.filter(item => {
-                const info = (item.infoHtml || '').toLowerCase();
-                return !info.includes('ضعيف') && !info.includes('منكر') && !info.includes('موضوع') && !info.includes('باطل');
+                const info = (item.infoHtml || '');
+                return info.includes('صحيح') && !info.includes('غير صحيح') && !info.includes('ليس بصحيح');
+            });
+        } else if (currentFilter === 'hasan') {
+            filtered = items.filter(item => {
+                const info = (item.infoHtml || '');
+                return info.includes('حسن') && !info.includes('ليس بحسن');
             });
         } else if (currentFilter === 'weak') {
             filtered = items.filter(item => {
-                const info = (item.infoHtml || '').toLowerCase();
+                const info = (item.infoHtml || '');
                 return info.includes('ضعيف') || info.includes('منكر') || info.includes('موضوع') || info.includes('باطل');
             });
         }
