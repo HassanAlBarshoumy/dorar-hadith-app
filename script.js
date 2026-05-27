@@ -512,4 +512,118 @@ document.addEventListener('DOMContentLoaded', () => {
             announce("حدث خطأ أثناء البحث. يرجى التحقق من اتصالك بالإنترنت.");
         }
     });
+
+    // --- Smart Notifications ---
+    const categoryKeywords = {
+        'عقيدة': ['توحيد', 'إيمان', 'شرك', 'ملائكة', 'قدر', 'عقيدة', 'رسل', 'يوم القيامة'],
+        'صلاة': ['صلاة', 'سجود', 'ركوع', 'مساجد', 'وضوء', 'أذان', 'إمامة', 'خشوع'],
+        'صيام': ['صيام', 'رمضان', 'فطر', 'سحور', 'تراويح', 'اعتكاف', 'ليلة القدر'],
+        'زكاة': ['زكاة', 'صدقة', 'نصاب', 'فقراء', 'مساكين', 'إنفاق'],
+        'حج': ['حج', 'عمرة', 'طواف', 'سعي', 'إحرام', 'مكة', 'عرفة', 'مزدلفة'],
+        'أخلاق': ['صدق', 'أمانة', 'بر', 'صلة', 'حياء', 'تواضع', 'صبر', 'إحسان'],
+        'أذكار': ['ذكر', 'دعاء', 'استغفار', 'تسبيح', 'تحميد', 'تكبير', 'تهليل']
+    };
+    
+    let notifTimer = null;
+    const toggleNotif = document.getElementById('notif-toggle');
+    const intervalSelectNotif = document.getElementById('notif-interval');
+    const categorySelectNotif = document.getElementById('notif-category');
+    const containerNotif = document.getElementById('notif-settings-container');
+
+    function setupNotifications() {
+        if (!toggleNotif) return;
+        const notifSettings = JSON.parse(localStorage.getItem('dorar_notif_settings')) || {
+            enabled: false, interval: 60, category: 'عشوائي'
+        };
+
+        toggleNotif.value = notifSettings.enabled ? 'on' : 'off';
+        intervalSelectNotif.value = notifSettings.interval;
+        categorySelectNotif.value = notifSettings.category;
+        containerNotif.style.display = notifSettings.enabled ? 'block' : 'none';
+
+        if (notifSettings.enabled && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+
+        toggleNotif.addEventListener('change', () => {
+            const enabled = toggleNotif.value === 'on';
+            containerNotif.style.display = enabled ? 'block' : 'none';
+            if (enabled && Notification.permission !== 'granted') {
+                Notification.requestPermission();
+            }
+            saveNotifSettings();
+        });
+
+        intervalSelectNotif.addEventListener('change', saveNotifSettings);
+        categorySelectNotif.addEventListener('change', saveNotifSettings);
+        
+        startNotificationTimer();
+    }
+
+    function saveNotifSettings() {
+        const settings = {
+            enabled: toggleNotif.value === 'on',
+            interval: parseInt(intervalSelectNotif.value),
+            category: categorySelectNotif.value
+        };
+        localStorage.setItem('dorar_notif_settings', JSON.stringify(settings));
+        startNotificationTimer();
+    }
+
+    function startNotificationTimer() {
+        if (notifTimer) clearInterval(notifTimer);
+        const settings = JSON.parse(localStorage.getItem('dorar_notif_settings'));
+        if (!settings || !settings.enabled) return;
+        notifTimer = setInterval(triggerNotification, settings.interval * 60 * 1000);
+    }
+
+    async function triggerNotification() {
+        if (Notification.permission !== 'granted') return;
+        const settings = JSON.parse(localStorage.getItem('dorar_notif_settings'));
+        if (!settings || !settings.enabled) return;
+
+        const cat = settings.category;
+        let keyword = '';
+        if (cat === 'عشوائي') {
+            const allKeys = Object.keys(categoryKeywords);
+            const randomCat = allKeys[Math.floor(Math.random() * allKeys.length)];
+            const words = categoryKeywords[randomCat];
+            keyword = words[Math.floor(Math.random() * words.length)];
+        } else {
+            const words = categoryKeywords[cat] || ['الله'];
+            keyword = words[Math.floor(Math.random() * words.length)];
+        }
+
+        try {
+            let data = null;
+            if (window.electronAPI) {
+                const targetUrl = `https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`;
+                const response = await window.electronAPI.fetchDorar(targetUrl);
+                data = JSON.parse(response);
+            } else {
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`)}`;
+                const res = await fetch(proxyUrl);
+                const json = await res.json();
+                data = JSON.parse(json.contents);
+            }
+
+            if (data && data.ahadith && data.ahadith.result) {
+                const results = processDorarHTML(data.ahadith.result);
+                const authentic = results.filter(r => r.degree.includes('صحيح') || r.degree.includes('حسن'));
+                if (authentic.length > 0) {
+                    const randomHadith = authentic[Math.floor(Math.random() * authentic.length)];
+                    new Notification("الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'فائدة عشوائية' : cat), {
+                        body: `${randomHadith.text}\n\nالراوي: ${randomHadith.rawi}\nالمحدث: ${randomHadith.muhaddith}\nخلاصة: ${randomHadith.degree}`,
+                        icon: 'icon.ico'
+                    });
+                }
+            }
+        } catch (err) {
+            if (window.electronAPI && window.electronAPI.logError) {
+                window.electronAPI.logError(`Notification error: ${err}`);
+            }
+        }
+    }
+    
+    setupNotifications();
 });

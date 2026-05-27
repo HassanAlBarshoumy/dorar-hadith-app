@@ -143,6 +143,40 @@
                         <option value="xl">كبير جداً</option>
                     </select>
                 </div>
+
+                <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border);">
+
+                <h3>الإشعارات الذكية 🔔</h3>
+                <div class="setting-group">
+                    <label for="notif-toggle">تفعيل الإشعارات:</label>
+                    <select id="notif-toggle" class="form-control">
+                        <option value="off" selected>معطل</option>
+                        <option value="on">مفعل</option>
+                    </select>
+                </div>
+
+                <div class="setting-group" id="notif-settings-container" style="display: none;">
+                    <label for="notif-interval">معدل الإرسال:</label>
+                    <select id="notif-interval" class="form-control">
+                        <option value="15">كل 15 دقيقة</option>
+                        <option value="30">كل 30 دقيقة</option>
+                        <option value="60" selected>كل ساعة</option>
+                        <option value="180">كل 3 ساعات</option>
+                        <option value="360">كل 6 ساعات</option>
+                    </select>
+
+                    <label for="notif-category" style="margin-top: 0.5rem; display: block;">الفئة (التقسيم):</label>
+                    <select id="notif-category" class="form-control">
+                        <option value="عشوائي">عشوائي (الجميع)</option>
+                        <option value="عقيدة">العقيدة</option>
+                        <option value="صلاة">الصلاة</option>
+                        <option value="صيام">الصيام</option>
+                        <option value="زكاة">الزكاة</option>
+                        <option value="حج">الحج</option>
+                        <option value="أخلاق">الأخلاق والآداب</option>
+                        <option value="أذكار">الأدعية والأذكار</option>
+                    </select>
+                </div>
                 
                 <div class="keyboard-shortcuts-info">
                     <strong>اختصارات لوحة المفاتيح:</strong>
