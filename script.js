@@ -574,7 +574,7 @@ const contentWrapper = document.createElement('div');
         card.appendChild(header);
         
         card.setAttribute('aria-label', `نتيجة رقم ${index + 1}`);
-        card.setAttribute('role', 'listitem');
+        card.setAttribute('role', 'option');
 
         return card;
     }
