@@ -206,19 +206,32 @@ document.addEventListener('DOMContentLoaded', () => {
         viewSearch.classList.remove('hidden');
         viewFavorites.classList.add('hidden');
         btnHome.classList.add('active');
+        btnHome.setAttribute('aria-current', 'page');
         btnFavorites.classList.remove('active');
+        btnFavorites.removeAttribute('aria-current');
     });
 
     btnFavorites.addEventListener('click', () => {
         viewSearch.classList.add('hidden');
         viewFavorites.classList.remove('hidden');
         btnHome.classList.remove('active');
+        btnHome.removeAttribute('aria-current');
         btnFavorites.classList.add('active');
+        btnFavorites.setAttribute('aria-current', 'page');
         renderFavorites();
     });
 
-    btnSettings.addEventListener('click', () => settingsModal.classList.remove('hidden'));
-    btnCloseSettings.addEventListener('click', () => settingsModal.classList.add('hidden'));
+    btnSettings.addEventListener('click', () => {
+        settingsModal.classList.remove('hidden');
+        settingsModal.setAttribute('aria-hidden', 'false');
+        // Set focus to the first focusable element or the close button
+        setTimeout(() => btnCloseSettings.focus(), 50);
+    });
+    btnCloseSettings.addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        settingsModal.setAttribute('aria-hidden', 'true');
+        btnSettings.focus();
+    });
 
     // --- Keyboard Shortcuts ---
     document.addEventListener('keydown', (e) => {
@@ -232,7 +245,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // Esc to close modals/dropdowns
         if (e.key === 'Escape') {
-            settingsModal.classList.add('hidden');
+            if (!settingsModal.classList.contains('hidden')) {
+                settingsModal.classList.add('hidden');
+                settingsModal.setAttribute('aria-hidden', 'true');
+                btnSettings.focus();
+            }
             searchHistoryContainer.classList.add('hidden');
         }
         
@@ -267,6 +284,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' && !searchHistoryContainer.classList.contains('hidden')) {
+            e.preventDefault();
+            const firstItem = searchHistoryContainer.querySelector('.history-item');
+            if (firstItem) firstItem.focus();
+        }
+    });
+
     // Hide history when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.search-form')) {
@@ -289,11 +314,32 @@ document.addEventListener('DOMContentLoaded', () => {
         searchHistory.forEach(query => {
             const div = document.createElement('div');
             div.className = 'history-item';
+            div.setAttribute('tabindex', '0');
+            div.setAttribute('role', 'button');
+            div.setAttribute('aria-label', `ابحث عن ${query} مجدداً`);
             div.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> <span>${query}</span>`;
-            div.addEventListener('click', () => {
+            
+            const executeHistorySearch = () => {
                 searchInput.value = query;
                 searchHistoryContainer.classList.add('hidden');
                 searchForm.dispatchEvent(new Event('submit'));
+            };
+
+            div.addEventListener('click', executeHistorySearch);
+            div.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    executeHistorySearch();
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const next = div.nextElementSibling;
+                    if (next) next.focus();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prev = div.previousElementSibling;
+                    if (prev) prev.focus();
+                    else searchInput.focus();
+                }
             });
             searchHistoryContainer.appendChild(div);
         });
@@ -302,8 +348,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Filtering ---
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            filterBtns.forEach(b => b.classList.remove('active'));
+            filterBtns.forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-pressed', 'false');
+            });
             e.target.classList.add('active');
+            e.target.setAttribute('aria-pressed', 'true');
             currentFilter = e.target.dataset.filter;
             if (currentResults.length > 0) {
                 renderResults(currentResults, resultsContainer);

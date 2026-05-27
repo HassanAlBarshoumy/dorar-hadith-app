@@ -21,7 +21,7 @@
         
         <!-- Top Navigation -->
         <nav class="top-nav" aria-label="القائمة العلوية">
-            <button id="btn-home" class="nav-btn active" aria-label="الرئيسية">
+            <button id="btn-home" class="nav-btn active" aria-label="الرئيسية" aria-current="page">
                 <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 <span class="sr-only">الرئيسية</span>
             </button>
@@ -88,9 +88,9 @@
                     <div class="filters-container">
                         <span class="filter-label" id="filter-label">تصفية:</span>
                         <div class="filter-buttons" role="group" aria-labelledby="filter-label">
-                            <button class="filter-btn active" data-filter="all">الكل</button>
-                            <button class="filter-btn" data-filter="authentic">الصحيح</button>
-                            <button class="filter-btn" data-filter="weak">الضعيف</button>
+                            <button class="filter-btn active" data-filter="all" aria-pressed="true">الكل</button>
+                            <button class="filter-btn" data-filter="authentic" aria-pressed="false">الصحيح</button>
+                            <button class="filter-btn" data-filter="weak" aria-pressed="false">الضعيف</button>
                         </div>
                     </div>
                 </section>
