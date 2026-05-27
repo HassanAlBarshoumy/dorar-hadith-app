@@ -119,12 +119,13 @@ class Api:
 
     def search_local_hadith(self, query):
         try:
-            # Check if local_hadith.db exists
             db_path = resource_path('local_hadith.db')
             if not os.path.exists(db_path):
                 db_path = 'local_hadith.db'
             
-            conn = sqlite3.connect(db_path)
+            import urllib.request
+            db_uri = 'file:' + urllib.request.pathname2url(os.path.abspath(db_path)) + '?mode=ro'
+            conn = sqlite3.connect(db_uri, uri=True)
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT book, text_ar, authenticity FROM ahadith 
@@ -151,5 +152,5 @@ if __name__ == '__main__':
     init_db()
     api = Api()
     html_file = resource_path('index.html')
-    webview.create_window('تطبيق الموسوعة الحديثية', 'file://' + html_file, js_api=api, width=900, height=700)
-    webview.start()
+    webview.create_window('تطبيق الموسوعة الحديثية', url=html_file, js_api=api, width=900, height=700)
+    webview.start(http_server=True)

@@ -1,23 +1,20 @@
-import urllib.request
-import urllib.parse
-import ssl
+import sqlite3
+import os
 
-def search(query):
-    url = "https://dorar.net/dorar_api.json?skey=" + urllib.parse.quote(query)
-    req = urllib.request.Request(
-        url, 
-        headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
-            'Accept': 'application/json, text/javascript, */*; q=0.01',
-            'Accept-Language': 'ar,en-US;q=0.7,en;q=0.3',
-            'Referer': 'https://dorar.net/',
-        }
-    )
-    try:
-        context = ssl._create_unverified_context()
-        with urllib.request.urlopen(req, timeout=10, context=context) as response:
-            return response.read().decode('utf-8')
-    except Exception as e:
-        return f"Error: {e}"
+db_path = 'local_hadith.db'
+db_path_uri = db_path.replace('\\', '/')
+db_uri = f"file:{db_path_uri}?mode=ro"
+conn = sqlite3.connect(db_uri, uri=True)
+cursor = conn.cursor()
+cursor.execute('''
+    SELECT book, text_ar, authenticity FROM ahadith 
+    WHERE text_ar LIKE ? 
+    LIMIT 2
+''', ('%صلاة%',))
 
-print(search("توحيد")[:200])
+rows = cursor.fetchall()
+conn.close()
+
+with open('test_search_result.txt', 'w', encoding='utf-8') as f:
+    for row in rows:
+        f.write(f"Book: {row[0]}\nAuth: {row[2]}\nText: {row[1]}\n\n")

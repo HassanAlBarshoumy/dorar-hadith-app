@@ -569,15 +569,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
                         return;
                     }
-                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
-                        const options = {
-                            url: `https://dorar.net/dorar_api.json`,
-                            params: { skey: query },
-                            headers: { 'User-Agent': 'DorarHadithApp Mobile' }
-                        };
-                        const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
-                        dorarData = JSON.parse(response.data);
-                    } else {
+                    if (!dorarData && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+                        try {
+                            const options = {
+                                url: `https://dorar.net/dorar_api.json`,
+                                params: { skey: query },
+                                headers: { 'User-Agent': 'DorarHadithApp Mobile' }
+                            };
+                            const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
+                            dorarData = JSON.parse(response.data);
+                        } catch (e) {
+                            console.error("Capacitor HTTP failed", e);
+                        }
+                    }
+                    
+                    if (!dorarData) {
                         dorarData = await fetchDorarJSONP(query);
                     }
 
