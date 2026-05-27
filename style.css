@@ -832,3 +832,8 @@ body.theme-dark .sticky-header,
         align-items: center;
     }
 }
+
+.hadith-text-box { outline: none; border-radius: var(--radius-md); padding: 0.5rem; transition: background 0.2s; }
+.hadith-text-box:focus { background: rgba(0,0,0,0.03); }
+
+body.theme-dark .hadith-text-box:focus, @media (prefers-color-scheme: dark) { body.theme-auto .hadith-text-box:focus { background: rgba(255,255,255,0.05); } }

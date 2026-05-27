@@ -547,16 +547,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const contentId = `hadith-content-${Date.now()}-${index}`;
         const contentWrapper = document.createElement('div');
         contentWrapper.id = contentId;
+        contentWrapper.className = 'hadith-text-box';
+        contentWrapper.setAttribute('contenteditable', 'true');
+        contentWrapper.setAttribute('role', 'textbox');
+        contentWrapper.setAttribute('aria-readonly', 'true');
+        contentWrapper.setAttribute('aria-multiline', 'true');
+        contentWrapper.setAttribute('tabindex', '0');
+        
+        // Prevent editing but allow screen reader navigation
+        contentWrapper.addEventListener('keydown', (e) => {
+            const allowedKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Home', 'End', 'PageUp', 'PageDown', 'Shift', 'Control', 'Alt', 'c', 'a', 'C', 'A'];
+            if (!allowedKeys.includes(e.key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+            }
+        });
+        contentWrapper.addEventListener('paste', e => e.preventDefault());
+        contentWrapper.addEventListener('cut', e => e.preventDefault());
         
         let enhancedInfoHtml = infoHtml || '';
-        let srNumber = `<span class="sr-only">نتيجة رقم ${index + 1}: </span>`;
-        contentWrapper.innerHTML = srNumber + hadithHtml + enhancedInfoHtml;
+        contentWrapper.innerHTML = hadithHtml + enhancedInfoHtml;
         card.appendChild(contentWrapper);
         
         // Append action buttons at the bottom
         card.appendChild(header);
         
-        card.setAttribute('aria-labelledby', contentId);
+        card.setAttribute('aria-label', `نتيجة رقم ${index + 1}`);
+        card.setAttribute('role', 'listitem');
 
         return card;
     }
