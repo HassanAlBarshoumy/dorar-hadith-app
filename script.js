@@ -572,9 +572,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (firstCard) firstCard.focus();
                     }, 100);
                 }
-            } else {
-                resultsContainer.innerHTML = '<div class="empty-state" role="status">لم يتم العثور على نتائج.</div>';
-                announce("لم يتم العثور على نتائج للبحث المطلوب.");
             }
         } catch (err) {
             loadingIndicator.classList.add('hidden');
