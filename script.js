@@ -86,6 +86,28 @@ document.addEventListener('DOMContentLoaded', () => {
             settingsModal.classList.add('hidden');
             searchHistoryContainer.classList.add('hidden');
         }
+        
+        // --- Arrow Navigation for Cards ---
+        if (e.target.classList.contains('hadith-card')) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const next = e.target.nextElementSibling;
+                if (next && next.classList.contains('hadith-card')) {
+                    e.target.setAttribute('tabindex', '-1');
+                    next.setAttribute('tabindex', '0');
+                    next.focus();
+                }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prev = e.target.previousElementSibling;
+                if (prev && prev.classList.contains('hadith-card')) {
+                    e.target.setAttribute('tabindex', '-1');
+                    prev.setAttribute('tabindex', '0');
+                    prev.focus();
+                }
+                else if (!prev) document.getElementById('search-input').focus();
+            }
+        }
     });
 
     // --- Search History ---
@@ -155,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function createCard(hadithHtml, infoHtml, originalHtml, index = 0) {
         const card = document.createElement('li');
         card.className = 'hadith-card';
-        card.setAttribute('tabindex', '0');
+        card.setAttribute('tabindex', index === 0 ? '0' : '-1');
         
         // Add staggered animation delay
         card.style.animationDelay = `${index * 0.05}s`;
@@ -264,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const fragment = document.createDocumentFragment();
         filtered.forEach((item, index) => {
             const card = createCard(item.hadithHtml, item.infoHtml, item.originalHtml, index);
-            card.setAttribute('aria-label', `نتيجة رقم ${index + 1}`);
             fragment.appendChild(card);
         });
 
