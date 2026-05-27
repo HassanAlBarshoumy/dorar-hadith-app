@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('index.html', '.'), ('style.css', '.'), ('script.js', '.'), ('manifest.json', '.'), ('sw.js', '.')],
+    datas=[('index.html', '.'), ('style.css', '.'), ('script.js', '.'), ('manifest.json', '.'), ('sw.js', '.'), ('local_hadith.db', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

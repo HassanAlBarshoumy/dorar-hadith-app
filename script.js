@@ -519,11 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        if (!navigator.onLine) {
-            announce("أنت حالياً غير متصل بالإنترنت. لا يمكن إجراء البحث.");
-            return;
-        }
-
         searchHistoryContainer.classList.add('hidden');
         
         const query = searchInput.value.trim();
@@ -531,38 +526,82 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveToHistory(query);
         
+        const searchSource = document.querySelector('input[name="searchSource"]:checked').value;
+
         loadingIndicator.classList.remove('hidden');
         resultsContainer.innerHTML = '';
         resultsSection.setAttribute('aria-busy', 'true');
 
         try {
-            let dorarData;
-
-            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
-                // Mobile Native
-                const options = {
-                    url: `https://dorar.net/dorar_api.json`,
-                    params: { skey: query },
-                    headers: { 'User-Agent': 'DorarHadithApp Mobile' }
-                };
-                const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
-                dorarData = JSON.parse(response.data);
+            if (searchSource === 'local_bukhari') {
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
+                    const localDataStr = await window.pywebview.api.search_local_hadith(query);
+                    const localData = JSON.parse(localDataStr);
+                    
+                    currentResults = localData.map(item => ({
+                        hadithHtml: `<div class="hadith">${item.text}</div>`,
+                        infoHtml: `<div class="hadith-info">
+                            <span class="info-item"><span class="info-label">المصدر:</span> ${item.book}</span>
+                            <span class="info-item"><span class="info-label">خلاصة الحكم:</span> ${item.authenticity}</span>
+                        </div>`,
+                        originalHtml: ""
+                    }));
+                } else {
+                    currentResults = [];
+                }
             } else {
-                // Use JSONP for both Electron, Web, and PyWebView!
-                dorarData = await fetchDorarJSONP(query);
+                let dorarData = null;
+
+                // 1. Try to load from Local Cache (Offline Database) First
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.get_from_cache) {
+                    try {
+                        const cachedData = await window.pywebview.api.get_from_cache(query);
+                        if (cachedData) {
+                            dorarData = JSON.parse(cachedData);
+                        }
+                    } catch (e) { console.error("Cache error:", e); }
+                }
+
+                // 2. If not found in cache, fetch from internet
+                if (!dorarData) {
+                    if (!navigator.onLine) {
+                        loadingIndicator.classList.add('hidden');
+                        resultsContainer.innerHTML = `<div class="error-message" role="alert">أنت غير متصل بالإنترنت ولم يتم العثور على نتيجة في الذاكرة المحلية.</div>`;
+                        return;
+                    }
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) {
+                        const options = {
+                            url: `https://dorar.net/dorar_api.json`,
+                            params: { skey: query },
+                            headers: { 'User-Agent': 'DorarHadithApp Mobile' }
+                        };
+                        const response = await window.Capacitor.Plugins.CapacitorHttp.get(options);
+                        dorarData = JSON.parse(response.data);
+                    } else {
+                        dorarData = await fetchDorarJSONP(query);
+                    }
+
+                    // 3. Save the new fetched data to Local Cache
+                    if (dorarData && window.pywebview && window.pywebview.api && window.pywebview.api.save_to_cache) {
+                        try {
+                            window.pywebview.api.save_to_cache(query, JSON.stringify(dorarData));
+                        } catch (e) {}
+                    }
+                }
+
+                if (!dorarData || !dorarData.ahadith || !dorarData.ahadith.result) {
+                    currentResults = [];
+                } else {
+                    currentResults = processDorarHTML(dorarData.ahadith.result);
+                }
             }
 
-            if (!dorarData || !dorarData.ahadith || !dorarData.ahadith.result) {
-                resultsContainer.innerHTML = '<div class="empty-state">لم يتم العثور على نتائج مطابقة، أو حدث خطأ في الخادم.</div>';
-            } else {
-                currentResults = processDorarHTML(dorarData.ahadith.result);
-                displayedCount = 0;
-                resultsContainer.innerHTML = '';
-                
-                // Show notification test button if we have results
-                containerNotif.style.display = 'block';
+            displayedCount = 0;
+            resultsContainer.innerHTML = '';
+            
+            containerNotif.style.display = 'block';
 
-                if (currentResults.length === 0) {
+            if (currentResults.length === 0) {
                     resultsContainer.innerHTML = '<div class="empty-state">لا توجد أحاديث مطابقة لبحثك.</div>';
                 } else {
                     renderResults(currentResults, resultsContainer);
@@ -711,7 +750,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            let data = await fetchDorarJSONP(keyword);
+            let data = null;
+            // 1. Try Cache First
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.get_from_cache) {
+                try {
+                    const cachedData = await window.pywebview.api.get_from_cache(keyword);
+                    if (cachedData) data = JSON.parse(cachedData);
+                } catch (e) {}
+            }
+
+            // 2. Fallback to Internet
+            if (!data) {
+                data = await fetchDorarJSONP(keyword);
+                
+                // 3. Save to Cache
+                if (data && window.pywebview && window.pywebview.api && window.pywebview.api.save_to_cache) {
+                    try {
+                        window.pywebview.api.save_to_cache(keyword, JSON.stringify(data));
+                    } catch (e) {}
+                }
+            }
 
             if (data && data.ahadith && data.ahadith.result) {
                 const results = processDorarHTML(data.ahadith.result);

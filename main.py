@@ -3,8 +3,47 @@ import urllib.request
 import urllib.parse
 import os
 import sys
+import sqlite3
+import json
+from datetime import datetime
 
 # For PyInstaller to find the data files
+def get_db_path():
+    app_data_dir = os.getenv('APPDATA')
+    if not app_data_dir:
+        app_data_dir = os.path.expanduser('~')
+    dorar_dir = os.path.join(app_data_dir, 'DorarHadithApp')
+    if not os.path.exists(dorar_dir):
+        os.makedirs(dorar_dir)
+    return os.path.join(dorar_dir, 'dorar_database.db')
+
+def init_db():
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    # Cache Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS search_cache (
+            query TEXT PRIMARY KEY,
+            results_json TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    # Local Hadith Table (For open source database integration later)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS local_hadith (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            book TEXT,
+            chapter TEXT,
+            narrator TEXT,
+            text_ar TEXT,
+            text_ar_clean TEXT,
+            authenticity TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -49,7 +88,67 @@ class Api:
         except Exception:
             return False
 
+    def save_to_cache(self, query, data_json):
+        try:
+            db_path = get_db_path()
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR REPLACE INTO search_cache (query, results_json, timestamp)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+            ''', (query, data_json))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            return False
+
+    def get_from_cache(self, query):
+        try:
+            db_path = get_db_path()
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('SELECT results_json FROM search_cache WHERE query = ?', (query,))
+            row = cursor.fetchone()
+            conn.close()
+            if row:
+                return row[0]
+            return None
+        except Exception as e:
+            return None
+
+    def search_local_hadith(self, query):
+        try:
+            # Check if local_hadith.db exists
+            db_path = resource_path('local_hadith.db')
+            if not os.path.exists(db_path):
+                db_path = 'local_hadith.db'
+            
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT book, text_ar, authenticity FROM ahadith 
+                WHERE text_ar LIKE ? 
+                LIMIT 50
+            ''', ('%' + query + '%',))
+            
+            rows = cursor.fetchall()
+            conn.close()
+            
+            results = []
+            for row in rows:
+                results.append({
+                    'book': row[0],
+                    'text': row[1],
+                    'authenticity': row[2]
+                })
+            
+            return json.dumps(results, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps([])
+
 if __name__ == '__main__':
+    init_db()
     api = Api()
     html_file = resource_path('index.html')
     webview.create_window('تطبيق الموسوعة الحديثية', 'file://' + html_file, js_api=api, width=900, height=700)
