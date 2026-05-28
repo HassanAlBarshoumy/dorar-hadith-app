@@ -159,7 +159,7 @@ $notifier.Show($toast)
         except Exception as e:
             return None
 
-    def search_local_hadith(self, query, page=1):
+    def search_local_hadith(self, query, page=1, books_filter=None):
         try:
             db_path = resource_path('local_hadith.db')
             if not os.path.exists(db_path):
@@ -171,11 +171,18 @@ $notifier.Show($toast)
             cursor = conn.cursor()
             page = int(page)
             offset = (page - 1) * 20
-            cursor.execute('''
-                SELECT book, text_ar, authenticity FROM ahadith 
-                WHERE text_ar LIKE ? 
-                LIMIT 20 OFFSET ?
-            ''', ('%' + query + '%', offset))
+            if books_filter == 'bukhari_muslim':
+                cursor.execute('''
+                    SELECT book, text_ar, authenticity FROM ahadith 
+                    WHERE text_ar LIKE ? AND (book LIKE '%البخاري%' OR book LIKE '%مسلم%')
+                    ORDER BY RANDOM() LIMIT 20
+                ''', ('%' + query + '%',))
+            else:
+                cursor.execute('''
+                    SELECT book, text_ar, authenticity FROM ahadith 
+                    WHERE text_ar LIKE ? 
+                    LIMIT 20 OFFSET ?
+                ''', ('%' + query + '%', offset))
             
             rows = cursor.fetchall()
             conn.close()

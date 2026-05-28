@@ -1261,10 +1261,10 @@ const contentWrapper = document.createElement('div');
             let ahadith = [];
             if (source === 'local') {
                 if (window.electronAPI && window.electronAPI.searchLocalDb) {
-                    const localDataStr = await window.electronAPI.searchLocalDb(keyword, 1);
+                    const localDataStr = await window.electronAPI.searchLocalDb(keyword, 1, 'bukhari_muslim');
                     if (localDataStr) ahadith = JSON.parse(localDataStr);
                 } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
-                    const localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
+                    const localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1, 'bukhari_muslim');
                     if (localDataStr) ahadith = JSON.parse(localDataStr);
                 } else if (nativeDb) {
                     const sqlQuery = "SELECT text_ar, book, authenticity FROM ahadith WHERE text_ar LIKE ? AND (book LIKE '%البخاري%' OR book LIKE '%مسلم%') ORDER BY RANDOM() LIMIT 20";
