@@ -15,6 +15,44 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Wasm DB for Capacitor ---
+    window.wasmDb = null;
+    let isWasmDbLoading = false;
+
+    async function loadWasmDb() {
+        if (window.wasmDb || isWasmDbLoading) return;
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            isWasmDbLoading = true;
+            try {
+                showToast("جاري تهيئة قاعدة البيانات المحلية لأول مرة، يرجى الانتظار...");
+                
+                // Dynamically load sql-wasm.js
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'sql-wasm.js';
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+
+                const SQL = await initSqlJs({
+                    locateFile: file => file
+                });
+
+                // Fetch DB file
+                const response = await fetch('local_hadith.db');
+                const buffer = await response.arrayBuffer();
+                window.wasmDb = new SQL.Database(new Uint8Array(buffer));
+                
+                showToast("تم تهيئة قاعدة البيانات بنجاح!");
+            } catch (err) {
+                console.error("Wasm DB Error:", err);
+                showToast("حدث خطأ أثناء تحميل قاعدة البيانات المحلية.");
+            }
+            isWasmDbLoading = false;
+        }
+    }
+
     // --- Elements ---
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('search-input');
@@ -241,9 +279,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const notifToggle = document.getElementById('notif-toggle');
         const notifInterval = document.getElementById('notif-interval');
         const notifCategory = document.getElementById('notif-category');
+        const notifSource = document.getElementById('notif-source');
         if (notifToggle) notifToggle.value = tempSettings.notif.enabled ? 'on' : 'off';
         if (notifInterval) notifInterval.value = tempSettings.notif.interval;
         if (notifCategory) notifCategory.value = tempSettings.notif.category;
+        if (notifSource) notifSource.value = tempSettings.notif.source || 'internet';
         
         settingsModal.classList.remove('hidden');
         settingsModal.setAttribute('aria-hidden', 'false');
@@ -258,10 +298,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const notifToggle = document.getElementById('notif-toggle');
         const notifInterval = document.getElementById('notif-interval');
         const notifCategory = document.getElementById('notif-category');
+        const notifSource = document.getElementById('notif-source');
         if (notifToggle && notifInterval && notifCategory) {
             tempSettings.notif.enabled = notifToggle.value === 'on';
             tempSettings.notif.interval = parseInt(notifInterval.value);
             tempSettings.notif.category = notifCategory.value;
+            if (notifSource) tempSettings.notif.source = notifSource.value;
         }
 
         if (JSON.stringify(tempSettings) !== JSON.stringify(appSettings)) {
@@ -284,14 +326,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const notifToggle = document.getElementById('notif-toggle');
             const notifInterval = document.getElementById('notif-interval');
             const notifCategory = document.getElementById('notif-category');
+        const notifSource = document.getElementById('notif-source');
             if (notifToggle && notifInterval && notifCategory) {
                 tempSettings.notif.enabled = notifToggle.value === 'on';
                 tempSettings.notif.interval = parseInt(notifInterval.value);
                 tempSettings.notif.category = notifCategory.value;
+                if (notifSource) tempSettings.notif.source = notifSource.value;
             }
             
             appSettings = JSON.parse(JSON.stringify(tempSettings));
             saveAllSettings();
+            if (typeof startNotificationTimer === 'function') startNotificationTimer();
             showToast('تم حفظ الإعدادات بنجاح');
             
             settingsModal.classList.add('hidden');
@@ -515,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await navigator.clipboard.writeText(plainText);
                 showToast("تم نسخ الحديث بنجاح!");
+                announce("تم نسخ الحديث بنجاح!");
             } catch (err) {}
         });
 
@@ -954,6 +1000,7 @@ const contentWrapper = document.createElement('div');
     const toggleNotif = document.getElementById('notif-toggle');
     const intervalSelectNotif = document.getElementById('notif-interval');
     const categorySelectNotif = document.getElementById('notif-category');
+    const sourceSelectNotif = document.getElementById('notif-source');
     const containerNotif = document.getElementById('notif-settings-container');
 
     function setupNotifications() {
@@ -963,6 +1010,9 @@ const contentWrapper = document.createElement('div');
         toggleNotif.value = notifSettings.enabled ? 'on' : 'off';
         intervalSelectNotif.value = notifSettings.interval;
         categorySelectNotif.value = notifSettings.category;
+        if(sourceSelectNotif) sourceSelectNotif.value = notifSettings.source || 'internet';
+
+
         containerNotif.style.display = notifSettings.enabled ? 'block' : 'none';
 
         if (notifSettings.enabled && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -980,6 +1030,7 @@ const contentWrapper = document.createElement('div');
 
         intervalSelectNotif.addEventListener('change', saveNotifSettings);
         categorySelectNotif.addEventListener('change', saveNotifSettings);
+        if(sourceSelectNotif) sourceSelectNotif.addEventListener('change', saveNotifSettings);
         
         const btnTestNotif = document.getElementById('btn-test-notif');
         if (btnTestNotif) {
@@ -1004,7 +1055,8 @@ const contentWrapper = document.createElement('div');
         appSettings.notif = {
             enabled: toggleNotif.value === 'on',
             interval: parseInt(intervalSelectNotif.value),
-            category: categorySelectNotif.value
+            category: categorySelectNotif.value,
+            source: sourceSelectNotif ? sourceSelectNotif.value : 'internet'
         };
         saveAllSettings();
         startNotificationTimer();

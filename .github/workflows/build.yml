@@ -53,6 +53,9 @@ jobs:
       run: |
         mkdir www
         cp index.html style.css script.js manifest.json sw.js www/
+        cp local_hadith.db www/ || true
+        cp node_modules/sql.js/dist/sql-wasm.js www/ || true
+        cp node_modules/sql.js/dist/sql-wasm.wasm www/ || true
 
     - name: Sync Capacitor Android
       run: |
