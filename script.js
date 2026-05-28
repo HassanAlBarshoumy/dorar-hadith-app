@@ -1305,14 +1305,11 @@ const contentWrapper = document.createElement('div');
 
             if (ahadith && ahadith.length > 0) {
                 const randomHadith = ahadith[Math.floor(Math.random() * ahadith.length)];
-                const title = "حديث اليوم من الدرر السنية - " + (cat === 'عشوائي' ? 'موضوع عشوائي' : cat);
+                const title = "الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'حديث عشوائي' : cat);
                 let textContent = randomHadith.text_ar || randomHadith.text || randomHadith.hadith || '';
                 textContent = textContent.replace(/<[^>]+>/g, '').trim();
                 if (textContent.length > 200) { textContent = textContent.substring(0, 197) + '...'; }
-                const body = `${textContent}
-
-المصدر: ${randomHadith.book}
-الحكم: ${randomHadith.authenticity}`;
+                const body = textContent + ' | المصدر: ' + randomHadith.book + ' | الحكم: ' + randomHadith.authenticity;
                 
                 showInAppNotification(title, body);
 

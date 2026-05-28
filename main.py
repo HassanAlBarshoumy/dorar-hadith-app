@@ -109,9 +109,9 @@ class Api:
 
     def show_notification(self, title, body):
         import subprocess
-        # Escape quotes for powershell
-        title = title.replace("'", "''").replace('"', '')
-        body = body.replace("'", "''").replace('"', '')
+        # Escape quotes and remove newlines for powershell
+        title = title.replace("'", "''").replace('"', '').replace('\n', ' ').replace('\r', '')
+        body = body.replace("'", "''").replace('"', '').replace('\n', ' ').replace('\r', '')
         ps_script = f'''
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
