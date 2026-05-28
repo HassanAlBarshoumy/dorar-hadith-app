@@ -1116,43 +1116,70 @@ const contentWrapper = document.createElement('div');
             const words = categoryKeywords[randomCat];
             keyword = words[Math.floor(Math.random() * words.length)];
         } else {
-            const words = categoryKeywords[cat] || ['صلاة'];
+            const words = categoryKeywords[cat] || ['الله'];
             keyword = words[Math.floor(Math.random() * words.length)];
         }
 
+        const sourceSelectNotif = document.getElementById('notif-source');
+        const source = force ? (sourceSelectNotif ? sourceSelectNotif.value : 'internet') : (settings ? settings.source : 'internet');
+
         try {
-            let localDataStr = null;
-            if (window.electronAPI && window.electronAPI.searchLocalDb) {
-                localDataStr = await window.electronAPI.searchLocalDb(keyword, 1);
-            } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
-                localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
+            let notificationBody = null;
+            let ahadith = [];
+
+            if (source === 'local') {
+                if (window.electronAPI && window.electronAPI.searchLocalDb) {
+                    const localDataStr = await window.electronAPI.searchLocalDb(keyword, 1);
+                    if (localDataStr) ahadith = JSON.parse(localDataStr);
+                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
+                    const localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
+                    if (localDataStr) ahadith = JSON.parse(localDataStr);
+                } else if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+                    await loadWasmDb();
+                    if (window.wasmDb) {
+                        const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT 20";
+                        const stmt = window.wasmDb.prepare(sqlQuery);
+                        stmt.bind([`%${keyword}%`]);
+                        while (stmt.step()) {
+                            const row = stmt.getAsObject();
+                            ahadith.push({ text_ar: row.text_ar, book: row.book, authenticity: row.authenticity });
+                        }
+                        stmt.free();
+                    }
+                }
+            } else {
+                const response = await fetch(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}`);
+                const data = await response.json();
+                if (data && data.ahadith && data.ahadith.info) {
+                    const parsedAhadith = parseHtmlResults(data.ahadith.info);
+                    ahadith = parsedAhadith.map(item => ({
+                        text_ar: item.hadith,
+                        book: item.info.includes('الراوي:') ? item.info.split('الراوي:')[1].split('<br>')[0].trim() : 'غير معروف',
+                        authenticity: item.info.includes('خلاصة حكم المحدث:') ? item.info.split('خلاصة حكم المحدث:')[1].split('<br>')[0].trim() : 'غير معروف'
+                    }));
+                }
             }
 
-            if (localDataStr) {
-                const ahadith = JSON.parse(localDataStr);
-                if (ahadith && ahadith.length > 0) {
-                    const randomHadith = ahadith[Math.floor(Math.random() * ahadith.length)];
-                    const title = "إشعار الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'حديث عشوائي' : cat);
-                    const textContent = randomHadith.text_ar || randomHadith.text;
-                    const body = `${textContent}
+            if (ahadith && ahadith.length > 0) {
+                const randomHadith = ahadith[Math.floor(Math.random() * ahadith.length)];
+                const title = "حديث اليوم من الدرر السنية - " + (cat === 'عشوائي' ? 'موضوع عشوائي' : cat);
+                const textContent = randomHadith.text_ar || randomHadith.text;
+                const body = `${textContent}
 
 المصدر: ${randomHadith.book}
 الحكم: ${randomHadith.authenticity}`;
-                    
-                    showInAppNotification(title, body);
+                
+                showInAppNotification(title, body);
 
-                    if (window.electronAPI && window.electronAPI.showNotification) {
-                        window.electronAPI.showNotification({ title: title, body: body });
-                    } else if (window.pywebview && window.pywebview.api && window.pywebview.api.show_notification) {
-                        window.pywebview.api.show_notification(title, body);
-                    } else {
-                        new Notification(title, { body: body });
-                    }
-                } else if (force) {
-                    showInAppNotification("لم يتم العثور على نتائج", "لم نجد حديثاً مناسباً لهذا التصنيف في قاعدة البيانات.");
+                if (window.electronAPI && window.electronAPI.showNotification) {
+                    window.electronAPI.showNotification({ title: title, body: body });
+                } else if (window.pywebview && window.pywebview.api && window.pywebview.api.show_notification) {
+                    window.pywebview.api.show_notification(title, body);
+                } else {
+                    new Notification(title, { body: body });
                 }
             } else if (force) {
-                showInAppNotification("خطأ", "لم نتمكن من الوصول لقاعدة البيانات المحلية.");
+                showInAppNotification("تنبيه", source === 'local' ? "عذرا لم يتم العثور على نتائج في القاعدة المحلية." : "عذرا لم يتم العثور على نتائج في الإنترنت.");
             }
         } catch (err) {
             if (force) {
@@ -1160,18 +1187,11 @@ const contentWrapper = document.createElement('div');
             }
         }
     }
-    
-        // Start by loading settings
+    // Start by loading settings
     let initialized = false;
     
       function initApp() {
-          if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-              const localRadio = document.querySelector('input[value="local_9books"]');
-              if (localRadio) {
-                  localRadio.parentElement.style.display = 'none';
-                  document.querySelector('input[value="dorar"]').checked = true;
-              }
-          }
+          
 
         if (initialized) return;
         initialized = true;
