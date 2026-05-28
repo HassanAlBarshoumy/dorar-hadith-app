@@ -49,11 +49,12 @@ ipcMain.handle('search-local-db', async (event, query) => {
     const rows = [];
     while (stmt.step()) {
         const row = stmt.getAsObject();
-        rows.push({
-            book: row.book,
-            text: row.text_ar,
-            authenticity: row.authenticity
-        });
+          rows.push({
+              book: row.book,
+              text_ar: row.text_ar,
+              text: row.text_ar,
+              authenticity: row.authenticity
+          });
     }
     stmt.free();
     

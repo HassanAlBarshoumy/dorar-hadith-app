@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // --- Global Error Logging ---
     window.addEventListener('error', (event) => {
         if (window.electronAPI && window.electronAPI.logError) {
@@ -800,7 +800,7 @@ const contentWrapper = document.createElement('div');
                     const localDataStr = await window.electronAPI.searchLocalDb(query, page);
                     const localData = JSON.parse(localDataStr);
                     newResults = localData.map(item => ({
-                        hadithHtml: `<div class="hadith">${item.text}</div>`,
+                        hadithHtml: `<div class="hadith">${item.text_ar || item.text || ''}</div>`,
                         infoHtml: `<div class="hadith-info">
                             <span class="info-item"><span class="info-subtitle">المصدر:</span> <span class="info-value">${item.book}</span></span>
                             <span class="info-item"><span class="info-subtitle">خلاصة الحكم:</span> <span class="info-value">${item.authenticity}</span></span>
@@ -1180,8 +1180,9 @@ const contentWrapper = document.createElement('div');
         
         for (let i = 0; i < toSchedule.length; i++) {
             let h = toSchedule[i];
-            let cleanText = h.text_ar.replace(/<[^>]+>/g, '').trim();
-            if (cleanText.length > 150) cleanText = cleanText.substring(0, 147) + '...';
+            let rawText = h.text_ar || h.text || h.hadith || '';
+            let cleanText = rawText.replace(/<[^>]+>/g, '').trim();
+            if (cleanText.length > 250) {cleanText = cleanText.substring(0, 147) + '...';}
             
             let scheduleTime = new Date(baseTime + ((i + 1) * intervalMs));
             
