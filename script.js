@@ -1308,7 +1308,28 @@ const contentWrapper = document.createElement('div');
                 const title = "الموسوعة الحديثية - " + (cat === 'عشوائي' ? 'حديث عشوائي' : cat);
                 let textContent = randomHadith.text_ar || randomHadith.text || randomHadith.hadith || '';
                 textContent = textContent.replace(/<[^>]+>/g, '').trim();
-                if (textContent.length > 200) { textContent = textContent.substring(0, 197) + '...'; }
+                // Try to extract the matn (actual hadith) by skipping the isnad (chain of narrators)
+                const matnMarkers = [
+                    'قال رسول الله صلى الله عليه وسلم',
+                    'قال النبي صلى الله عليه وسلم',
+                    'أن رسول الله صلى الله عليه وسلم قال',
+                    'أن النبي صلى الله عليه وسلم قال',
+                    'عليه وسلم قال',
+                    'عليه وسلم أنه قال',
+                    'عليه وسلم :',
+                    'عليه وسلم:',
+                ];
+                for (const marker of matnMarkers) {
+                    const idx = textContent.indexOf(marker);
+                    if (idx !== -1) {
+                        const afterMarker = textContent.substring(idx + marker.length).trim().replace(/^[:\s]+/, '');
+                        if (afterMarker.length > 30) {
+                            textContent = afterMarker;
+                            break;
+                        }
+                    }
+                }
+                if (textContent.length > 400) { textContent = textContent.substring(0, 397) + '...'; }
                 const body = textContent + ' | المصدر: ' + randomHadith.book + ' | الحكم: ' + randomHadith.authenticity;
                 
                 showInAppNotification(title, body);
