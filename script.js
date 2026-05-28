@@ -1255,7 +1255,11 @@ const contentWrapper = document.createElement('div');
         }
 
         const sourceSelectNotif = document.getElementById('notif-source');
-        const source = force ? (sourceSelectNotif ? sourceSelectNotif.value : 'internet') : (settings ? settings.source : 'internet');
+        let source = force ? (sourceSelectNotif ? sourceSelectNotif.value : 'local') : (settings ? (settings.source || 'local') : 'local');
+        // In PyWebView/Electron, always prefer local DB for notifications
+        if (window.pywebview || window.electronAPI) {
+            source = 'local';
+        }
 
         try {
             let ahadith = [];
@@ -1323,8 +1327,12 @@ const contentWrapper = document.createElement('div');
                 showInAppNotification("تنبيه", source === 'local' ? "عذرا لم يتم العثور على نتائج في القاعدة المحلية." : "عذرا لم يتم العثور على نتائج في الإنترنت.");
             }
         } catch (err) {
+            console.error("Notification error:", err);
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.log_error) {
+                window.pywebview.api.log_error("Notification Error: " + err.toString() + " | Stack: " + (err.stack || "No stack"));
+            }
             if (force) {
-                showInAppNotification("خطأ", "حدث خطأ أثناء محاولة جلب الإشعار.");
+                showInAppNotification("خطأ", "حدث خطأ: " + err.message);
             }
         }
     }
