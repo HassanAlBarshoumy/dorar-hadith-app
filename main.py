@@ -109,6 +109,7 @@ class Api:
 
     def show_notification(self, title, body):
         import subprocess
+        import base64
         # Escape quotes and remove newlines for powershell
         title = title.replace("'", "''").replace('"', '').replace('\n', ' ').replace('\r', '')
         body = body.replace("'", "''").replace('"', '').replace('\n', ' ').replace('\r', '')
@@ -123,8 +124,9 @@ $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNoti
 $notifier.Show($toast)
 '''
         try:
-            process = subprocess.Popen(['powershell', '-NoProfile', '-NonInteractive', '-Command', '-'], stdin=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW)
-            process.communicate(input=ps_script.encode('utf-8'))
+            # Use -EncodedCommand (Base64 UTF-16LE) for proper Arabic/Unicode support
+            encoded_cmd = base64.b64encode(ps_script.encode('utf-16-le')).decode('ascii')
+            subprocess.Popen(['powershell', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded_cmd], creationflags=subprocess.CREATE_NO_WINDOW)
             return True
         except Exception as e:
             print(f"Error showing notification: {e}")
