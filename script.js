@@ -101,22 +101,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- In-App Toast Notifications ---
-    function showInAppNotification(title, body) {
+    let _lastFullHadith = null;
+
+    function showHadithModal(hadithData) {
+        // Remove existing modal if any
+        const existing = document.getElementById('hadith-modal-overlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'hadith-modal-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;justify-content:center;align-items:center;padding:1rem;backdrop-filter:blur(5px);animation:fadeIn 0.3s ease;';
+        
+        const text = (hadithData.text || '').replace(/<[^>]+>/g, '');
+        
+        overlay.innerHTML = `
+        <div style="background:var(--card-bg, #1a2a4a);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:2rem;max-width:650px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;direction:rtl;">
+            <button id="close-hadith-modal" aria-label="إغلاق" style="position:absolute;top:0.8rem;left:0.8rem;background:rgba(255,255,255,0.1);border:none;color:#fff;font-size:1.3rem;cursor:pointer;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">✕</button>
+            <h3 style="color:var(--primary, #64b5f6);text-align:center;margin-bottom:1.2rem;font-size:1.1rem;">🕌 الموسوعة الحديثية</h3>
+            <div style="font-size:1.15rem;line-height:2.2;color:var(--text-color, #f0f0f0);text-align:justify;padding:1.2rem;background:rgba(255,255,255,0.04);border-radius:12px;border-right:4px solid var(--primary, #64b5f6);margin-bottom:1.2rem;">${text}</div>
+            <div style="display:flex;gap:0.8rem;flex-wrap:wrap;justify-content:center;">
+                <span style="background:rgba(100,181,246,0.15);color:#90caf9;padding:0.5rem 1rem;border-radius:20px;font-size:0.9rem;">📖 المصدر: ${hadithData.book || ''}</span>
+                <span style="background:rgba(100,181,246,0.15);color:#90caf9;padding:0.5rem 1rem;border-radius:20px;font-size:0.9rem;">✅ الحكم: ${hadithData.authenticity || ''}</span>
+            </div>
+        </div>`;
+
+        document.body.appendChild(overlay);
+        overlay.querySelector('#close-hadith-modal').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    }
+
+    function showInAppNotification(title, body, fullHadith = null) {
         const container = document.getElementById('toast-container');
         if (!container) return;
         
+        if (fullHadith) _lastFullHadith = fullHadith;
+
         const toast = document.createElement('div');
         toast.className = 'toast-notification';
-        toast.innerHTML = `<strong>${title}</strong><p style="margin: 0.5rem 0 0; font-size: 0.9em; white-space: pre-wrap;">${body}</p>`;
+        const btnHtml = fullHadith ? `<button class="show-full-hadith-btn" style="margin-top:0.5rem;background:var(--primary,#1a73e8);color:#fff;border:none;padding:0.4rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85em;">عرض الحديث كاملاً</button>` : '';
+        toast.innerHTML = `<strong>${title}</strong><p style="margin: 0.5rem 0 0; font-size: 0.9em; white-space: pre-wrap;">${body}</p>${btnHtml}`;
         
         container.appendChild(toast);
         announce(`${title}: ${body}`);
         
+        // Add click handler for full hadith button
+        const fullBtn = toast.querySelector('.show-full-hadith-btn');
+        if (fullBtn && fullHadith) {
+            fullBtn.addEventListener('click', () => {
+                showHadithModal(fullHadith);
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            });
+        }
+
         setTimeout(() => toast.classList.add('show'), 10);
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
-        }, 8000);
+        }, fullHadith ? 15000 : 8000); // Longer timeout when there's a button
     }
 
     // --- State ---
@@ -1331,14 +1373,15 @@ const contentWrapper = document.createElement('div');
                 }
                 if (textContent.length > 400) { textContent = textContent.substring(0, 397) + '...'; }
                 const body = textContent + ' | المصدر: ' + randomHadith.book + ' | الحكم: ' + randomHadith.authenticity;
+                const fullRawText = (randomHadith.text_ar || randomHadith.text || randomHadith.hadith || '').replace(/<[^>]+>/g, '').trim();
+                const fullHadithData = { text: fullRawText, book: randomHadith.book || '', authenticity: randomHadith.authenticity || '' };
                 
-                showInAppNotification(title, body);
+                showInAppNotification(title, body, fullHadithData);
 
                 if (window.electronAPI && window.electronAPI.showNotification) {
                     window.electronAPI.showNotification({ title: title, body: body });
                 } else if (window.pywebview && window.pywebview.api && window.pywebview.api.show_notification) {
-                    const fullRawText = (randomHadith.text_ar || randomHadith.text || randomHadith.hadith || '').replace(/<[^>]+>/g, '').trim();
-                    window.pywebview.api.show_notification(title, body, fullRawText, randomHadith.book || '', randomHadith.authenticity || '');
+                    window.pywebview.api.show_notification(title, body, fullHadithData.text, fullHadithData.book, fullHadithData.authenticity);
                 } else {
                     new Notification(title, { body: body });
                 }

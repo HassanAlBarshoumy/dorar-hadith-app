@@ -110,111 +110,22 @@ class Api:
     def show_notification(self, title, body, full_text='', book='', authenticity=''):
         import subprocess
         import base64
-        import html as html_mod
+        # Escape quotes and remove newlines for powershell
+        title = title.replace("'", "''").replace('"', '').replace('\n', ' ').replace('\r', '')
+        body = body.replace("'", "''").replace('"', '').replace('\n', ' ').replace('\r', '')
         
-        # Save full hadith as styled HTML page
-        hadith_html_path = ''
+        # Save full text for retrieval
         if full_text:
             hadith_dir = os.path.dirname(get_db_path())
-            os.makedirs(hadith_dir, exist_ok=True)
-            hadith_html_path = os.path.join(hadith_dir, 'last_hadith.html')
-            
-            escaped_text = html_mod.escape(full_text)
-            escaped_book = html_mod.escape(book)
-            escaped_auth = html_mod.escape(authenticity)
-            
-            html_content = f'''<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<title>الموسوعة الحديثية</title>
-<style>
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ 
-    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-    background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 50%, #0d1f3c 100%);
-    color: #e8e8e8; min-height: 100vh;
-    display: flex; justify-content: center; align-items: center; padding: 2rem;
-}}
-.card {{
-    background: rgba(255,255,255,0.08); backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.12); border-radius: 20px;
-    padding: 2.5rem; max-width: 700px; width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-}}
-.title {{
-    color: #64b5f6; font-size: 1.1rem; margin-bottom: 1.5rem;
-    text-align: center; font-weight: 600;
-    border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;
-}}
-.hadith-text {{
-    font-size: 1.25rem; line-height: 2.2; color: #f0f0f0;
-    text-align: justify; margin-bottom: 1.5rem;
-    padding: 1.5rem; background: rgba(255,255,255,0.04);
-    border-radius: 12px; border-right: 4px solid #64b5f6;
-}}
-.info {{ display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }}
-.info-tag {{
-    background: rgba(100,181,246,0.15); color: #90caf9;
-    padding: 0.5rem 1.2rem; border-radius: 25px; font-size: 0.9rem;
-}}
-</style>
-</head>
-<body>
-<div class="card">
-    <div class="title">🕌 الموسوعة الحديثية</div>
-    <div class="hadith-text">{escaped_text}</div>
-    <div class="info">
-        <span class="info-tag">📖 المصدر: {escaped_book}</span>
-        <span class="info-tag">✅ الحكم: {escaped_auth}</span>
-    </div>
-</div>
-</body>
-</html>'''
-            with open(hadith_html_path, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-            hadith_html_path = hadith_html_path.replace('\\\\', '/')
-        
-        # Escape for XML
-        def xml_escape(s):
-            return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace("'", '&apos;').replace('"', '&quot;').replace('\\n', ' ').replace('\\r', '')
-        
-        title_esc = xml_escape(title)
-        body_esc = xml_escape(body)
-        
-        # Build toast with button if we have full text
-        if hadith_html_path:
-            file_uri = 'file:///' + hadith_html_path.replace('\\\\', '/').replace(' ', '%20')
-            toast_xml = f'''
-<toast>
-  <visual>
-    <binding template="ToastGeneric">
-      <text>{title_esc}</text>
-      <text>{body_esc}</text>
-    </binding>
-  </visual>
-  <actions>
-    <action content="عرض الحديث كاملاً" activationType="protocol" arguments="{file_uri}"/>
-  </actions>
-</toast>'''
-            ps_script = f'''
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-$xmlDoc = New-Object Windows.Data.Xml.Dom.XmlDocument
-$xmlDoc.LoadXml(@"
-{toast_xml}
-"@)
-$toast = [Windows.UI.Notifications.ToastNotification]::new($xmlDoc)
-$notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('الموسوعة الحديثية')
-$notifier.Show($toast)
-'''
-        else:
-            ps_script = f'''
+            with open(os.path.join(hadith_dir, 'last_hadith.json'), 'w', encoding='utf-8') as f:
+                json.dump({'text': full_text, 'book': book, 'authenticity': authenticity}, f)
+
+        ps_script = f'''
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 $template = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
 $textNodes = $template.GetElementsByTagName('text')
-$textNodes.Item(0).AppendChild($template.CreateTextNode('{title_esc}')) | Out-Null
-$textNodes.Item(1).AppendChild($template.CreateTextNode('{body_esc}')) | Out-Null
+$textNodes.Item(0).AppendChild($template.CreateTextNode('{title}')) | Out-Null
+$textNodes.Item(1).AppendChild($template.CreateTextNode('{body}')) | Out-Null
 $toast = [Windows.UI.Notifications.ToastNotification]::new($template)
 $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('الموسوعة الحديثية')
 $notifier.Show($toast)
@@ -226,6 +137,14 @@ $notifier.Show($toast)
         except Exception as e:
             print(f"Error showing notification: {e}")
             return False
+
+    def get_last_hadith(self):
+        hadith_dir = os.path.dirname(get_db_path())
+        path = os.path.join(hadith_dir, 'last_hadith.json')
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        return None
 
     def save_to_cache(self, query, data_json):
         try:
