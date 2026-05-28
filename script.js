@@ -818,6 +818,25 @@ const contentWrapper = document.createElement('div');
                         </div>`,
                         originalHtml: ""
                     }));
+                } else if (nativeDb) {
+                    const sqlQuery = "SELECT id, text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT ? OFFSET ?";
+                    const searchParam = `%${query}%`;
+                    const res = await nativeDb.query({
+                        database: "local_hadith.db",
+                        statement: sqlQuery,
+                        values: [searchParam, 20, (page - 1) * 20],
+                        readonly: true
+                    });
+                    if (res.values) {
+                        newResults = res.values.map(item => ({
+                            hadithHtml: `<div class="hadith">${item.text_ar}</div>`,
+                            infoHtml: `<div class="hadith-info">
+                                <span class="info-item"><span class="info-subtitle">المصدر:</span> <span class="info-value">${item.book}</span></span>
+                                <span class="info-item"><span class="info-subtitle">خلاصة الحكم:</span> <span class="info-value">${item.authenticity}</span></span>
+                            </div>`,
+                            originalHtml: ""
+                        }));
+                    }
                 }
                 if (newResults.length < 20) hasMorePages = false;
                 else hasMorePages = true;
@@ -1129,7 +1148,8 @@ const contentWrapper = document.createElement('div');
                     const res = await nativeDb.query({
                         database: "local_hadith.db",
                         statement: sqlQuery,
-                        values: [searchParam]
+                        values: [searchParam],
+                        readonly: true
                     });
                     if (res.values) {
                         for (let row of res.values) {
