@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     // --- Global Error Logging ---
     window.addEventListener('error', (event) => {
         if (window.electronAPI && window.electronAPI.logError) {
@@ -26,11 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 showToast("جاري تجهيز محرك البحث المحلي...");
                 const sqlite = window.Capacitor.Plugins.CapacitorSQLite;
-                
-                // Copy DB from assets
                 await sqlite.copyFromAssets();
-                
-                // Create connection
                 await sqlite.createConnection({
                     database: "local_hadith.db",
                     version: 1,
@@ -38,12 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     mode: "no-encryption",
                     readonly: true
                 });
-                
-                // Open the database
                 await sqlite.open({ database: "local_hadith.db", readonly: true });
-                
-                nativeDb = sqlite; // Use the plugin directly for queries
-                
+                nativeDb = sqlite;
                 showToast("تم تهيئة قاعدة البيانات المحلية بنجاح!");
             } catch (err) {
                 console.error("Native SQLite Error:", err);
@@ -1104,7 +1096,6 @@ const contentWrapper = document.createElement('div');
 
     async function triggerNotification(force = false) {
         if (!force && Notification.permission !== 'granted') return;
-        
         const settings = appSettings.notif;
         if (!force && (!settings || !settings.enabled)) return;
 
@@ -1124,9 +1115,7 @@ const contentWrapper = document.createElement('div');
         const source = force ? (sourceSelectNotif ? sourceSelectNotif.value : 'internet') : (settings ? settings.source : 'internet');
 
         try {
-            let notificationBody = null;
             let ahadith = [];
-
             if (source === 'local') {
                 if (window.electronAPI && window.electronAPI.searchLocalDb) {
                     const localDataStr = await window.electronAPI.searchLocalDb(keyword, 1);
@@ -1134,20 +1123,17 @@ const contentWrapper = document.createElement('div');
                 } else if (window.pywebview && window.pywebview.api && window.pywebview.api.search_local_hadith) {
                     const localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
                     if (localDataStr) ahadith = JSON.parse(localDataStr);
-                } else if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-                    await loadNativeDb();
-                    if (nativeDb) {
-                        const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT 20";
-                        const searchParam = `%${keyword}%`;
-                        const res = await nativeDb.query({
-                            database: "local_hadith.db",
-                            statement: sqlQuery,
-                            values: [searchParam]
-                        });
-                        if (res.values) {
-                            for (let row of res.values) {
-                                ahadith.push({ text_ar: row.text_ar, book: row.book, authenticity: row.authenticity });
-                            }
+                } else if (nativeDb) {
+                    const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT 20";
+                    const searchParam = `%${keyword}%`;
+                    const res = await nativeDb.query({
+                        database: "local_hadith.db",
+                        statement: sqlQuery,
+                        values: [searchParam]
+                    });
+                    if (res.values) {
+                        for (let row of res.values) {
+                            ahadith.push({ text_ar: row.text_ar, book: row.book, authenticity: row.authenticity });
                         }
                     }
                 }
