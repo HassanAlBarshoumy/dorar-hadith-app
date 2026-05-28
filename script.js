@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // --- Global Error Logging ---
     window.addEventListener('error', (event) => {
         if (window.electronAPI && window.electronAPI.logError) {
@@ -1026,15 +1026,23 @@ const contentWrapper = document.createElement('div');
 
         containerNotif.style.display = notifSettings.enabled ? 'block' : 'none';
 
-        if (notifSettings.enabled && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-            Notification.requestPermission();
+        if (notifSettings.enabled) {
+            if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
+                window.Capacitor.Plugins.LocalNotifications.requestPermissions();
+            } else if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
         }
 
         toggleNotif.addEventListener('change', () => {
             const enabled = toggleNotif.value === 'on';
             containerNotif.style.display = enabled ? 'block' : 'none';
-            if (enabled && Notification.permission !== 'granted') {
-                Notification.requestPermission();
+            if (enabled) {
+                if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
+                    window.Capacitor.Plugins.LocalNotifications.requestPermissions();
+                } else if (Notification.permission !== 'granted') {
+                    Notification.requestPermission();
+                }
             }
             saveNotifSettings();
         });
@@ -1076,8 +1084,117 @@ const contentWrapper = document.createElement('div');
     function startNotificationTimer() {
         if (notifTimer) clearInterval(notifTimer);
         const settings = appSettings.notif;
-        if (!settings || !settings.enabled) return;
-        notifTimer = setInterval(triggerNotification, settings.interval * 60 * 1000);
+        if (!settings || !settings.enabled) {
+            if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
+                window.Capacitor.Plugins.LocalNotifications.getPending().then(pending => {
+                    if (pending.notifications && pending.notifications.length > 0) {
+                        window.Capacitor.Plugins.LocalNotifications.cancel({ notifications: pending.notifications });
+                    }
+                });
+            }
+            return;
+        }
+        
+        if (window.Capacitor && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins.LocalNotifications) {
+            scheduleNativeNotifications(settings);
+        } else {
+            notifTimer = setInterval(triggerNotification, settings.interval * 60 * 1000);
+        }
+    }
+
+    async function scheduleNativeNotifications(settings) {
+        const LN = window.Capacitor.Plugins.LocalNotifications;
+        try {
+            const pending = await LN.getPending();
+            if (pending.notifications && pending.notifications.length > 0) {
+                await LN.cancel({ notifications: pending.notifications });
+            }
+        } catch(e) { console.error("Error cancelling pending:", e); }
+
+        const cat = settings.category || 'عشوائي';
+        let keyword = '';
+        if (cat === 'عشوائي') {
+            const allKeys = Object.keys(categoryKeywords);
+            const randomCat = allKeys[Math.floor(Math.random() * allKeys.length)];
+            const words = categoryKeywords[randomCat];
+            keyword = words[Math.floor(Math.random() * words.length)];
+        } else {
+            const words = categoryKeywords[cat] || ['الله'];
+            keyword = words[Math.floor(Math.random() * words.length)];
+        }
+        
+        const source = settings.source || 'internet';
+        let ahadith = [];
+        
+        if (source === 'local') {
+            if (!nativeDb) await loadNativeDb();
+            if (nativeDb) {
+                try {
+                    const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? ORDER BY RANDOM() LIMIT 50";
+                    const searchParam = `%${keyword}%`;
+                    const res = await nativeDb.query({
+                        database: "local_hadith.db",
+                        statement: sqlQuery,
+                        values: [searchParam],
+                        readonly: true
+                    });
+                    if (res.values) {
+                        for (let row of res.values) {
+                            ahadith.push({ text_ar: row.text_ar, book: row.book, authenticity: row.authenticity });
+                        }
+                    }
+                } catch (err) { console.error("Local Notif DB Fetch Error:", err); }
+            }
+        } else {
+            try {
+                let page = 1;
+                while (ahadith.length < 50 && page <= 3) {
+                    const response = await fetch(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}&page=${page}`);
+                    const data = await response.json();
+                    if (data && data.ahadith && data.ahadith.info) {
+                        const parsedAhadith = parseHtmlResults(data.ahadith.info);
+                        for (let item of parsedAhadith) {
+                            ahadith.push({
+                                text_ar: item.hadith,
+                                book: item.info.includes('المصدر:') ? item.info.split('المصدر:')[1].split('<br>')[0].trim() : 'غير محدد',
+                                authenticity: item.info.includes('خلاصة حكم المحدث:') ? item.info.split('خلاصة حكم المحدث:')[1].split('<br>')[0].trim() : ''
+                            });
+                        }
+                    }
+                    if (!data || !data.ahadith || !data.ahadith.info) break;
+                    page++;
+                }
+            } catch(e) { console.error("Local Notif Web Fetch Error:", e); }
+        }
+        
+        if (ahadith.length === 0) return;
+        ahadith = ahadith.sort(() => 0.5 - Math.random());
+        const toSchedule = ahadith.slice(0, 50);
+        
+        let notifs = [];
+        let baseTime = new Date().getTime();
+        const intervalMs = settings.interval * 60 * 1000;
+        
+        for (let i = 0; i < toSchedule.length; i++) {
+            let h = toSchedule[i];
+            let cleanText = h.text_ar.replace(/<[^>]+>/g, '').trim();
+            if (cleanText.length > 150) cleanText = cleanText.substring(0, 147) + '...';
+            
+            let scheduleTime = new Date(baseTime + ((i + 1) * intervalMs));
+            
+            notifs.push({
+                id: Math.floor(Math.random() * 1000000) + i,
+                title: 'تذكير الدرر السنية',
+                body: cleanText + '\\n' + h.authenticity,
+                schedule: { at: scheduleTime },
+                smallIcon: 'ic_stat_icon_default'
+            });
+        }
+        
+        try {
+            await LN.schedule({ notifications: notifs });
+            console.log(`Scheduled ${notifs.length} local notifications natively.`);
+        } catch(e) { console.error("Local Notif Schedule Error:", e); }
     }
 
     // --- API Fetch via JSONP ---
