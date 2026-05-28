@@ -183,6 +183,7 @@ $notifier.Show($toast)
             for row in rows:
                 results.append({
                     'book': row[0],
+                    'text_ar': row[1],
                     'text': row[1],
                     'authenticity': row[2]
                 })

@@ -811,7 +811,7 @@ const contentWrapper = document.createElement('div');
                     const localDataStr = await window.pywebview.api.search_local_hadith(query, page);
                     const localData = JSON.parse(localDataStr);
                     newResults = localData.map(item => ({
-                        hadithHtml: `<div class="hadith">${item.text_ar}</div>`,
+                        hadithHtml: `<div class="hadith">${item.text_ar || item.text || ''}</div>`,
                         infoHtml: `<div class="hadith-info">
                             <span class="info-item"><span class="info-subtitle">المصدر:</span> <span class="info-value">${item.book}</span></span>
                             <span class="info-item"><span class="info-subtitle">خلاصة الحكم:</span> <span class="info-value">${item.authenticity}</span></span>
