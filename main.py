@@ -123,7 +123,8 @@ $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNoti
 $notifier.Show($toast)
 '''
         try:
-            subprocess.Popen(['powershell', '-Command', ps_script], creationflags=subprocess.CREATE_NO_WINDOW)
+            process = subprocess.Popen(['powershell', '-NoProfile', '-NonInteractive', '-Command', '-'], stdin=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW)
+            process.communicate(input=ps_script.encode('utf-8'))
             return True
         except Exception as e:
             print(f"Error showing notification: {e}")

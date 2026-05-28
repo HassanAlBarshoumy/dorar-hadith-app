@@ -1294,10 +1294,17 @@ const contentWrapper = document.createElement('div');
                 }
             }
 
+            // Filter by Bukhari and Muslim if source is local
+            if (source === 'local') {
+                ahadith = ahadith.filter(h => h.book && (h.book.includes('البخاري') || h.book.includes('مسلم')));
+            }
+
             if (ahadith && ahadith.length > 0) {
                 const randomHadith = ahadith[Math.floor(Math.random() * ahadith.length)];
                 const title = "حديث اليوم من الدرر السنية - " + (cat === 'عشوائي' ? 'موضوع عشوائي' : cat);
-                const textContent = randomHadith.text_ar || randomHadith.text;
+                let textContent = randomHadith.text_ar || randomHadith.text || randomHadith.hadith || '';
+                textContent = textContent.replace(/<[^>]+>/g, '').trim();
+                if (textContent.length > 200) { textContent = textContent.substring(0, 197) + '...'; }
                 const body = `${textContent}
 
 المصدر: ${randomHadith.book}
