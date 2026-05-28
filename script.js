@@ -1337,7 +1337,8 @@ const contentWrapper = document.createElement('div');
                 if (window.electronAPI && window.electronAPI.showNotification) {
                     window.electronAPI.showNotification({ title: title, body: body });
                 } else if (window.pywebview && window.pywebview.api && window.pywebview.api.show_notification) {
-                    window.pywebview.api.show_notification(title, body);
+                    const fullRawText = (randomHadith.text_ar || randomHadith.text || randomHadith.hadith || '').replace(/<[^>]+>/g, '').trim();
+                    window.pywebview.api.show_notification(title, body, fullRawText, randomHadith.book || '', randomHadith.authenticity || '');
                 } else {
                     new Notification(title, { body: body });
                 }
