@@ -984,8 +984,11 @@ const contentWrapper = document.createElement('div');
         
         searchHistoryContainer.classList.add('hidden');
         
-        const query = searchInput.value.trim();
+        let query = searchInput.value.trim();
         if (!query) return;
+
+        // Clean query from punctuation to improve local DB matching
+        query = query.replace(/[.,،؛!?؟"'\(\)\[\]\{\}-]/g, '').replace(/\s+/g, ' ').trim();
 
         saveToHistory(query);
         
