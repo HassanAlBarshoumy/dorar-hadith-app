@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
     // --- Global Error Logging ---
     window.addEventListener('error', (event) => {
         if (window.electronAPI && window.electronAPI.logError) {
@@ -819,7 +819,7 @@ const contentWrapper = document.createElement('div');
                         originalHtml: ""
                     }));
                 } else if (nativeDb) {
-                    const sqlQuery = "SELECT id, text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT ? OFFSET ?";
+                    const sqlQuery = "SELECT id, text_ar, book, authenticity FROM ahadith WHERE text_ar LIKE ? LIMIT ? OFFSET ?";
                     const searchParam = `%${query}%`;
                     const res = await nativeDb.query({
                         database: "local_hadith.db",
@@ -1130,7 +1130,7 @@ const contentWrapper = document.createElement('div');
             if (!nativeDb) await loadNativeDb();
             if (nativeDb) {
                 try {
-                    const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? ORDER BY RANDOM() LIMIT 50";
+                    const sqlQuery = "SELECT text_ar, book, authenticity FROM ahadith WHERE text_ar LIKE ? AND (book LIKE '%البخاري%' OR book LIKE '%مسلم%') ORDER BY RANDOM() LIMIT 50";
                     const searchParam = `%${keyword}%`;
                     const res = await nativeDb.query({
                         database: "local_hadith.db",
@@ -1148,17 +1148,20 @@ const contentWrapper = document.createElement('div');
         } else {
             try {
                 let page = 1;
-                while (ahadith.length < 50 && page <= 3) {
+                while (ahadith.length < 50 && page <= 10) {
                     const response = await fetch(`https://dorar.net/dorar_api.json?skey=${encodeURIComponent(keyword)}&page=${page}`);
                     const data = await response.json();
                     if (data && data.ahadith && data.ahadith.info) {
                         const parsedAhadith = parseHtmlResults(data.ahadith.info);
                         for (let item of parsedAhadith) {
-                            ahadith.push({
-                                text_ar: item.hadith,
-                                book: item.info.includes('المصدر:') ? item.info.split('المصدر:')[1].split('<br>')[0].trim() : 'غير محدد',
-                                authenticity: item.info.includes('خلاصة حكم المحدث:') ? item.info.split('خلاصة حكم المحدث:')[1].split('<br>')[0].trim() : ''
-                            });
+                            let bookName = item.info.includes('المصدر:') ? item.info.split('المصدر:')[1].split('<br>')[0].trim() : 'غير محدد';
+                            if (bookName.includes('البخاري') || bookName.includes('مسلم')) {
+                                ahadith.push({
+                                    text_ar: item.hadith,
+                                    book: bookName,
+                                    authenticity: item.info.includes('خلاصة حكم المحدث:') ? item.info.split('خلاصة حكم المحدث:')[1].split('<br>')[0].trim() : ''
+                                });
+                            }
                         }
                     }
                     if (!data || !data.ahadith || !data.ahadith.info) break;
@@ -1260,7 +1263,7 @@ const contentWrapper = document.createElement('div');
                     const localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
                     if (localDataStr) ahadith = JSON.parse(localDataStr);
                 } else if (nativeDb) {
-                    const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT 20";
+                    const sqlQuery = "SELECT text_ar, book, authenticity FROM ahadith WHERE text_ar LIKE ? AND (book LIKE '%البخاري%' OR book LIKE '%مسلم%') ORDER BY RANDOM() LIMIT 20";
                     const searchParam = `%${keyword}%`;
                     const res = await nativeDb.query({
                         database: "local_hadith.db",

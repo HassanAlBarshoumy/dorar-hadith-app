@@ -58,6 +58,7 @@ jobs:
     - name: Sync Capacitor Android
       run: |
         npx cap add android || true
+        sed -i '/<application/i \    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>' android/app/src/main/AndroidManifest.xml
         npx cap sync android
 
     - name: Build Android APK
