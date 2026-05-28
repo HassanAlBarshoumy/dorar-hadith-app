@@ -15,41 +15,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Wasm DB for Capacitor ---
-    window.wasmDb = null;
-    let isWasmDbLoading = false;
+    // --- Native SQLite DB for Capacitor ---
+    let isNativeDbLoading = false;
+    let nativeDb = null;
 
-    async function loadWasmDb() {
-        if (window.wasmDb || isWasmDbLoading) return;
+    async function loadNativeDb() {
+        if (nativeDb || isNativeDbLoading) return;
         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-            isWasmDbLoading = true;
+            isNativeDbLoading = true;
             try {
-                showToast("جاري تهيئة قاعدة البيانات المحلية لأول مرة، يرجى الانتظار...");
+                showToast("جاري تجهيز محرك البحث المحلي...");
+                const sqlite = window.Capacitor.Plugins.CapacitorSQLite;
                 
-                // Dynamically load sql-wasm.js
-                await new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = 'sql-wasm.js';
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-
-                const SQL = await initSqlJs({
-                    locateFile: file => file
-                });
-
-                // Fetch DB file
-                const response = await fetch('local_hadith.db');
-                const buffer = await response.arrayBuffer();
-                window.wasmDb = new SQL.Database(new Uint8Array(buffer));
+                // Copy DB from assets
+                await sqlite.copyFromAssets();
                 
-                showToast("تم تهيئة قاعدة البيانات بنجاح!");
+                // Create connection
+                await sqlite.createConnection({
+                    database: "local_hadith.db",
+                    version: 1,
+                    encrypted: false,
+                    mode: "no-encryption",
+                    readonly: true
+                });
+                
+                // Open the database
+                await sqlite.open({ database: "local_hadith.db", readonly: true });
+                
+                nativeDb = sqlite; // Use the plugin directly for queries
+                
+                showToast("تم تهيئة قاعدة البيانات المحلية بنجاح!");
             } catch (err) {
-                console.error("Wasm DB Error:", err);
+                console.error("Native SQLite Error:", err);
                 showToast("حدث خطأ أثناء تحميل قاعدة البيانات المحلية.");
             }
-            isWasmDbLoading = false;
+            isNativeDbLoading = false;
         }
     }
 
@@ -1135,16 +1135,20 @@ const contentWrapper = document.createElement('div');
                     const localDataStr = await window.pywebview.api.search_local_hadith(keyword, 1);
                     if (localDataStr) ahadith = JSON.parse(localDataStr);
                 } else if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-                    await loadWasmDb();
-                    if (window.wasmDb) {
+                    await loadNativeDb();
+                    if (nativeDb) {
                         const sqlQuery = "SELECT text_ar, book, authenticity FROM hadith WHERE text_ar LIKE ? LIMIT 20";
-                        const stmt = window.wasmDb.prepare(sqlQuery);
-                        stmt.bind([`%${keyword}%`]);
-                        while (stmt.step()) {
-                            const row = stmt.getAsObject();
-                            ahadith.push({ text_ar: row.text_ar, book: row.book, authenticity: row.authenticity });
+                        const searchParam = `%${keyword}%`;
+                        const res = await nativeDb.query({
+                            database: "local_hadith.db",
+                            statement: sqlQuery,
+                            values: [searchParam]
+                        });
+                        if (res.values) {
+                            for (let row of res.values) {
+                                ahadith.push({ text_ar: row.text_ar, book: row.book, authenticity: row.authenticity });
+                            }
                         }
-                        stmt.free();
                     }
                 }
             } else {

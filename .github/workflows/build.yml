@@ -51,11 +51,9 @@ jobs:
 
     - name: Prepare Web Assets
       run: |
-        mkdir www
+        mkdir -p www/assets/databases
         cp index.html style.css script.js manifest.json sw.js www/
-        cp local_hadith.db www/ || true
-        cp node_modules/sql.js/dist/sql-wasm.js www/ || true
-        cp node_modules/sql.js/dist/sql-wasm.wasm www/ || true
+        cp local_hadith.db www/assets/databases/ || true
 
     - name: Sync Capacitor Android
       run: |
